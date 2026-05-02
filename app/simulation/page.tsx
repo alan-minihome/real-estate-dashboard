@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { WATCHLIST } from '@/lib/watchlist'
+import KumyungTaxBanner from '../components/KumyungTaxBanner'
 
 // ─── 타입 ───────────────────────────────────────────────────────────────────
 
@@ -587,6 +588,11 @@ function SimulationContent() {
             tax={selectedTotals.tax} usdkrw={usdkrw} investment={selectedInvestment}
           />
 
+          {/* 금융소득종합과세 경고 */}
+          <div className="mb-6">
+            <KumyungTaxBanner annualGrossUsd={selectedTotals.gross} usdkrw={usdkrw} />
+          </div>
+
           {/* 결과 테이블 */}
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -748,6 +754,11 @@ function SimulationContent() {
                 tax={ptTotals.tax} usdkrw={usdkrw}
                 investment={portfolioRows.reduce((acc, r) => acc + (r.price ?? 0) * r.quantity, 0)}
               />
+
+              {/* 금융소득종합과세 경고 */}
+              <div className="mb-6">
+                <KumyungTaxBanner annualGrossUsd={ptTotals.gross} usdkrw={usdkrw} />
+              </div>
 
               {/* 결과 테이블 */}
               <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-x-auto">

@@ -1,6 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import KumyungTaxBanner from '../components/KumyungTaxBanner'
+
+const DIV_TAX_RATE = 15.4 // 배당소득세 원천징수율 (일반계좌 기준)
 
 interface Candidate {
   id: number
@@ -114,25 +117,41 @@ export default function CandidatesPage() {
       </div>
 
       {/* KPI */}
-      {watching.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
-            <p className="text-xs text-[#64748B]">관심 종목</p>
-            <p className="text-2xl font-bold text-[#0F172A] mt-1">{watching.length}종목</p>
-          </div>
-          <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
-            <p className="text-xs text-[#64748B]">예상 연간 배당 (세전)</p>
-            <p className="text-2xl font-bold text-[#0F172A] mt-1">${totalAnnualDiv.toFixed(0)}</p>
-            {usdkrw && <p className="text-xs text-[#64748B]">₩{Math.round(totalAnnualDiv * usdkrw).toLocaleString()}</p>}
-          </div>
-          <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
-            <p className="text-xs text-[#64748B]">매수신호 발생</p>
-            <p className="text-2xl font-bold text-emerald-600 mt-1">
-              {watching.filter(c => c.buy_signal).length}종목 ⚡
-            </p>
-          </div>
-        </div>
-      )}
+      {watching.length > 0 && (() => {
+        const netDiv = totalAnnualDiv * (1 - DIV_TAX_RATE / 100)
+        const taxAmt = totalAnnualDiv - netDiv
+        return (
+          <>
+            <div className="grid grid-cols-4 gap-4 mb-4">
+              <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+                <p className="text-xs text-[#64748B]">관심 종목</p>
+                <p className="text-2xl font-bold text-[#0F172A] mt-1">{watching.length}종목</p>
+              </div>
+              <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+                <p className="text-xs text-[#64748B]">연간 배당 (세전)</p>
+                <p className="text-xl font-bold text-[#0F172A] mt-1">${totalAnnualDiv.toFixed(0)}</p>
+                {usdkrw && <p className="text-xs text-[#64748B]">₩{Math.round(totalAnnualDiv * usdkrw).toLocaleString()}</p>}
+              </div>
+              <div className="bg-blue-50 rounded-xl border border-[#1A56DB] p-4">
+                <p className="text-xs text-[#64748B]">연간 배당 <span className="font-semibold text-[#1A56DB]">세후</span> ({DIV_TAX_RATE}% 차감)</p>
+                <p className="text-xl font-bold text-[#1A56DB] mt-1">${netDiv.toFixed(0)}</p>
+                {usdkrw && <p className="text-xs text-[#64748B]">₩{Math.round(netDiv * usdkrw).toLocaleString()}</p>}
+                <p className="text-[10px] text-red-500 mt-0.5">세금 -${taxAmt.toFixed(0)}</p>
+              </div>
+              <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+                <p className="text-xs text-[#64748B]">매수신호 발생</p>
+                <p className="text-2xl font-bold text-emerald-600 mt-1">
+                  {watching.filter(c => c.buy_signal).length}종목 ⚡
+                </p>
+              </div>
+            </div>
+            {/* 금융소득종합과세 경고 */}
+            <div className="mb-6">
+              <KumyungTaxBanner annualGrossUsd={totalAnnualDiv} usdkrw={usdkrw} />
+            </div>
+          </>
+        )
+      })()}
 
       {/* 관심 종목 테이블 */}
       {watching.length === 0 ? (
