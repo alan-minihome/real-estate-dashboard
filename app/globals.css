@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --dd-blue: #1A56DB;
+  --dd-blue-light: #EBF5FF;
+  --dd-green: #0E9F6E;
+  --dd-red: #E02424;
+  --dd-amber: #D97706;
+  --dd-bg: #F8FAFC;
+  --dd-card: #FFFFFF;
+  --dd-border: #E2E8F0;
+  --dd-text: #0F172A;
+  --dd-muted: #64748B;
+  --dd-sidebar: #0F172A;
+}
+
+body {
+  background: var(--dd-bg);
+  color: var(--dd-text);
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { text-wrap: balance; }
+.tabular { font-variant-numeric: tabular-nums; }
+button:active:not(:disabled) { transform: scale(0.97); }
