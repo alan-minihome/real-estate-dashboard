@@ -28,6 +28,20 @@ interface IcrResult {
   error: string | null
 }
 
+interface EarningsFlag {
+  type: string
+  label: string
+  severity: 'warning' | 'danger'
+}
+
+interface EarningsRisk {
+  score: number
+  risk_level: 'safe' | 'warning' | 'danger' | 'unknown'
+  flags: EarningsFlag[]
+  earnings_growth_pct: number | null
+  error: string | null
+}
+
 export default function CandidatesPage() {
   const router = useRouter()
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -38,6 +52,8 @@ export default function CandidatesPage() {
   const [editMemo, setEditMemo] = useState<string>('')
   const [icrData, setIcrData] = useState<Record<string, IcrResult>>({})
   const [icrLoading, setIcrLoading] = useState(false)
+  const [riskData, setRiskData] = useState<Record<string, EarningsRisk>>({})
+  const [riskLoading, setRiskLoading] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -52,12 +68,20 @@ export default function CandidatesPage() {
         .filter(c => c.status === 'watching')
         .map(c => c.ticker)
       if (watchingTickers.length > 0) {
+        const tStr = watchingTickers.join(',')
         setIcrLoading(true)
-        fetch(`/api/icr?tickers=${watchingTickers.join(',')}`)
+        fetch(`/api/icr?tickers=${tStr}`)
           .then(r => r.json())
           .then((d: Record<string, IcrResult>) => setIcrData(d))
           .catch(() => {})
           .finally(() => setIcrLoading(false))
+
+        setRiskLoading(true)
+        fetch(`/api/earnings-risk?tickers=${tStr}`)
+          .then(r => r.json())
+          .then((d: Record<string, EarningsRisk>) => setRiskData(d))
+          .catch(() => {})
+          .finally(() => setRiskLoading(false))
       }
     }
     if (mr?.USDKRW?.price) setUsdkrw(mr.USDKRW.price)
@@ -126,6 +150,46 @@ export default function CandidatesPage() {
       >
         {v}x <span className="text-[10px] opacity-70">{label}</span>
       </span>
+    )
+  }
+
+  function renderRisk(ticker: string) {
+    if (riskLoading) return <span className="text-slate-300 text-xs">조회 중…</span>
+    const d = riskData[ticker]
+    if (!d) return <span className="text-slate-300">–</span>
+    if (d.risk_level === 'unknown') return <span className="text-slate-300 text-xs" title={d.error || ''}>–</span>
+
+    if (d.risk_level === 'safe') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium text-emerald-700 bg-emerald-50 border-emerald-200">
+          ✅ 이상무
+          {d.earnings_growth_pct !== null && (
+            <span className="text-[10px] opacity-60">이익 +{d.earnings_growth_pct}%</span>
+          )}
+        </span>
+      )
+    }
+
+    const hasDanger = d.flags.some(f => f.severity === 'danger')
+    const tip = d.flags.map(f => f.label).join('\n')
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium cursor-help ${
+            hasDanger
+              ? 'text-red-700 bg-red-50 border-red-200'
+              : 'text-amber-700 bg-amber-50 border-amber-200'
+          }`}
+          title={tip}
+        >
+          {hasDanger ? '🔴' : '⚠️'} {hasDanger ? '위험' : '주의'} ({d.flags.length}건)
+        </span>
+        {d.flags.map((f, i) => (
+          <span key={i} className={`text-[10px] leading-tight ${f.severity === 'danger' ? 'text-red-500' : 'text-amber-600'}`}>
+            · {f.label}
+          </span>
+        ))}
+      </div>
     )
   }
 
@@ -233,6 +297,11 @@ export default function CandidatesPage() {
                     ICR ⓘ
                   </span>
                 </th>
+                <th className="text-left px-4 py-2.5 font-medium text-[#64748B]">
+                  <span title="실적 리스크 — EPS 미스 · 이익 급감 · 배당성향 과부하 여부">
+                    실적 리스크 ⓘ
+                  </span>
+                </th>
                 <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">목표주수</th>
                 <th className="text-right px-4 py-2.5 font-medium text-[#64748B]">예상 연배당</th>
                 <th className="text-left px-4 py-2.5 font-medium text-[#64748B]">메모</th>
@@ -271,6 +340,9 @@ export default function CandidatesPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {renderIcr(c.ticker)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {renderRisk(c.ticker)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       {isEditing ? (
