@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
       </head>
-      <body className="min-h-full bg-[#F8FAFC] text-[#0F172A]">
+      <body className="min-h-full bg-[var(--dd-bg)] text-[var(--dd-text)]">
         <AppShell>{children}</AppShell>
       </body>
     </html>

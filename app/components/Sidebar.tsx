@@ -20,11 +20,11 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-60 min-h-screen bg-[#0F172A] flex flex-col fixed left-0 top-0 z-10">
+    <aside className="w-60 min-h-screen bg-[var(--dd-sidebar)] flex flex-col fixed left-0 top-0 z-10">
       {/* 로고 */}
       <div className="px-5 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#1A56DB] flex items-center justify-center text-white text-sm font-bold">💰</div>
+          <div className="w-8 h-8 rounded-lg bg-[var(--dd-blue)] flex items-center justify-center text-white text-sm font-bold">💰</div>
           <div>
             <p className="text-sm font-bold text-white leading-tight">배당주 대시보드</p>
             <p className="text-[10px] text-slate-400 leading-tight">미국 배당성장주 모니터링</p>
@@ -44,7 +44,7 @@ export default function Sidebar() {
               href={href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-[#1A56DB] text-white'
+                  ? 'bg-[var(--dd-blue)] text-white'
                   : 'text-slate-400 hover:bg-white/10 hover:text-white'
               }`}
             >
