@@ -91,7 +91,8 @@ export default function HomePage() {
     return sc?.buy_signal === 1 && sc?.overall_pass !== 1
   }).length
   const passPct = total ? Math.round(passed / total * 100) : 0
-  const lastUpdate = stocks[0]?.fetched_at ? relativeTime(stocks[0].fetched_at) : '없음'
+  const latestFetchedAt = stocks.reduce((max, s) => s.fetched_at > max ? s.fetched_at : max, '')
+  const lastUpdate = latestFetchedAt ? relativeTime(latestFetchedAt) : '없음'
 
   async function handleRefresh() {
     setRefreshing(true)
@@ -99,11 +100,14 @@ export default function HomePage() {
       const r = await fetch('/api/refresh', { method: 'POST' })
       const d = await r.json()
       if (d.ok) {
-        const r2 = await fetch('/api/stocks')
-        const d2 = await r2.json()
+        const [d2, candidatesData] = await Promise.all([
+          fetch('/api/stocks').then(r2 => r2.json()),
+          fetch('/api/candidates').then(r2 => r2.json()).catch(() => []),
+        ])
         setStocks(d2.stocks || [])
         setScreening(d2.screening || [])
         setCustomWatchlist(d2.customWatchlist || [])
+        if (Array.isArray(candidatesData)) setCandidates(candidatesData)
         setError('')
       } else {
         setError(d.error || '갱신 실패')
