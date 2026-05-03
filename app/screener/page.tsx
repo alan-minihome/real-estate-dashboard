@@ -126,7 +126,7 @@ export default function ScreenerPage() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [memo, setMemo] = useState('')
   const [candidateAdded, setCandidateAdded] = useState<Set<string>>(new Set())
-  const [candidates, setCandidates] = useState<{ ticker: string; name: string }[]>([])
+  const [candidates, setCandidates] = useState<Array<Screening & { ticker: string; name: string; status: string; price?: number | null; div_yield?: number | null }>>([])
 
   useEffect(() => {
     Promise.all([
@@ -144,10 +144,8 @@ export default function ScreenerPage() {
         setStockPrices(pm)
         setCustomWatchlist(stocksData.customWatchlist || [])
         if (Array.isArray(candidatesData)) {
-          setCandidates(candidatesData
-            .filter((c: { status: string }) => c.status === 'watching')
-            .map((c: { ticker: string; name: string }) => ({ ticker: c.ticker, name: c.name }))
-          )
+          // 스크리닝 데이터 전체 보존 (pass_*, overall_pass, buy_signal, checks_json)
+          setCandidates(candidatesData.filter((c: { status: string }) => c.status === 'watching'))
           setCandidateAdded(new Set(candidatesData.map((c: { ticker: string }) => c.ticker)))
         }
         if (marketData?.USDKRW?.price) setUsdkrw(marketData.USDKRW.price)
