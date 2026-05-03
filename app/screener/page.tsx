@@ -459,6 +459,16 @@ export default function ScreenerPage() {
         <span className="text-slate-300">– 스크리닝 미실행</span>
       </div>
 
+      {/* 매수신호 기준 설명 */}
+      <div className="mb-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+        <span className="text-base">⚡</span>
+        <span>
+          <strong>매수신호 기준</strong>: 현재 배당률 &gt; 5년 평균 배당률 +{' '}
+          <strong>{(criteria['yield_vs_avg_min'] ?? 1.0).toFixed(1)}%p</strong>
+          {' '}— 주가가 역사적 평균 대비 저평가된 구간 (배당률이 평소보다 높다 = 주가가 내려왔다)
+        </span>
+      </div>
+
       <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-auto max-h-[600px]">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -470,7 +480,12 @@ export default function ScreenerPage() {
                 <th key={c.key} className="text-center px-3 py-3 font-medium text-[#64748B] text-xs">{c.label}</th>
               ))}
               <th className="text-center px-4 py-3 font-medium text-[#64748B]">통과</th>
-              <th className="text-center px-4 py-3 font-medium text-[#64748B]">매수신호</th>
+              <th
+                className="text-center px-4 py-3 font-medium text-[#64748B] cursor-help"
+                title={`매수신호 = 현재 배당률 > 5년 평균 배당률 + ${(criteria['yield_vs_avg_min'] ?? 1.0).toFixed(1)}%p\n주가가 역사적 저평가 구간에 진입했다는 신호`}
+              >
+                매수신호 ⓘ
+              </th>
               <th className="text-center px-4 py-3 font-medium text-[#64748B] min-w-[100px]">🎯 결과</th>
               <th className="text-center px-4 py-3 font-medium text-[#64748B]">후보 추가</th>
             </tr>
@@ -534,7 +549,11 @@ export default function ScreenerPage() {
                           : <span className="text-red-500 text-xs">❌ {passCount}/{activeCriteria.length - naCount}</span>
                         : <span className="text-slate-300">–</span>}
                     </td>
-                    <td className="px-4 py-3 text-center">{sc?.buy_signal ? '⚡' : ''}</td>
+                    <td className="px-4 py-3 text-center">
+                      {sc?.buy_signal
+                        ? <span title={sc.signal_reason ?? undefined} className="cursor-help text-base">⚡</span>
+                        : <span className="text-slate-200 text-xs">–</span>}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       <VerdictBadge overallPass={sc?.overall_pass} buySignal={sc?.buy_signal} signalReason={sc?.signal_reason} size="sm" />
                     </td>
