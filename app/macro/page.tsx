@@ -35,9 +35,17 @@ function MarketCard({ meta, data, history }: {
   const up = data.pct >= 0
   const isVixHigh = meta.key === 'VIX' && data.price >= 30
 
+  // 일별 → 월별 dedup (월의 마지막 거래일 기준)
+  const monthlyMap: Record<string, HistoryPoint> = {}
+  for (const h of history) {
+    const month = h.date.slice(0, 7)
+    monthlyMap[month] = h
+  }
+  const monthlyHistory = Object.values(monthlyMap).slice(-6)
+
   // 6개월 추세 계산 (첫번째 vs 마지막)
-  const trendUp = history.length >= 2
-    ? history[history.length - 1].close >= history[0].close
+  const trendUp = monthlyHistory.length >= 2
+    ? monthlyHistory[monthlyHistory.length - 1].close >= monthlyHistory[0].close
     : up
 
   const chartColor = meta.key === 'VIX'
@@ -63,23 +71,20 @@ function MarketCard({ meta, data, history }: {
       </p>
 
       {/* 6개월 미니 차트 */}
-      {history.length > 1 && (
+      {monthlyHistory.length > 1 && (
         <div className="mt-3 -mx-1">
           <ResponsiveContainer width="100%" height={64}>
-            <LineChart data={history} margin={{ top: 4, right: 2, bottom: 16, left: 2 }}>
+            <LineChart data={monthlyHistory} margin={{ top: 4, right: 2, bottom: 16, left: 2 }}>
               <YAxis domain={['auto', 'auto']} hide />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 8, fill: '#94A3B8' }}
-                tickFormatter={(v: string) => {
-                  const d = new Date(v)
-                  return `${d.getMonth() + 1}월`
-                }}
-                interval="preserveStartEnd"
+                tickFormatter={(v: string) => `${parseInt(v.slice(5, 7))}월`}
+                interval={0}
                 axisLine={false}
                 tickLine={false}
               />
-              <Line type="monotone" dataKey="close" stroke={chartColor} dot={false} strokeWidth={1.5} />
+              <Line type="monotone" dataKey="close" stroke={chartColor} dot={{ r: 2.5, fill: chartColor, strokeWidth: 0 }} strokeWidth={1.5} />
               <Tooltip
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
@@ -164,10 +169,13 @@ function MacroChart({ ind }: { ind: typeof FRED_INDICATORS[0] }) {
   useEffect(() => {
     fetch(`/api/macro/${ind.id}`).then(r => r.json()).then(d => {
       const rows = Array.isArray(d) ? [...d].reverse() : []
-      // 6개월치만 표시
       const sixMonthsAgo = new Date()
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-      setData(rows.filter(r => new Date(r.recorded_at) >= sixMonthsAgo))
+      const filtered = rows.filter(r => new Date(r.recorded_at) >= sixMonthsAgo)
+      // 월별 dedup — 같은 달 중 마지막 레코드만 유지
+      const monthMap: Record<string, MacroRow> = {}
+      for (const r of filtered) monthMap[r.recorded_at.slice(0, 7)] = r
+      setData(Object.values(monthMap))
     }).finally(() => setLoading(false))
   }, [ind.id])
 
@@ -206,23 +214,46 @@ function MacroChart({ ind }: { ind: typeof FRED_INDICATORS[0] }) {
       ) : data.length === 0 ? (
         <div className="h-36 flex items-center justify-center text-[#64748B] text-sm">데이터 없음 — FRED 갱신 후 확인</div>
       ) : (
-        <ResponsiveContainer width="100%" height={140}>
-          <LineChart data={data.map(r => ({ date: r.recorded_at.slice(0, 7), value: r.value }))}>
+        <ResponsiveContainer width="100%" height={160}>
+          <LineChart data={data.map(r => ({ date: r.recorded_at.slice(0, 7), value: r.value }))} margin={{ top: 20, right: 12, bottom: 0, left: 0 }}>
             <XAxis
               dataKey="date"
               tick={{ fontSize: 10, fill: '#64748B' }}
-              tickFormatter={(v: string) => {
-                const [, m] = v.split('-')
-                return `${parseInt(m)}월`
-              }}
-              interval="preserveStartEnd"
+              tickFormatter={(v: string) => `${parseInt(v.slice(5, 7))}월`}
+              interval={0}
               axisLine={false}
               tickLine={false}
             />
             <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']} width={36} />
-            <Tooltip formatter={(v) => typeof v === 'number' ? `${v.toFixed(2)}${ind.unit}` : v} />
+            <Tooltip
+              formatter={(v) => typeof v === 'number' ? [`${v.toFixed(2)}${ind.unit}`, ind.label] : v}
+              labelFormatter={(l) => {
+                const s = String(l)
+                return `${s.slice(0,4)}년 ${parseInt(s.slice(5,7))}월`
+              }}
+            />
             {ind.warn !== null && <ReferenceLine y={ind.warn} stroke="#E02424" strokeDasharray="4 2" label={{ value: '0%', position: 'insideTopLeft', fontSize: 9, fill: '#E02424' }} />}
-            <Line type="monotone" dataKey="value" stroke="#1A56DB" dot={{ r: 3, fill: '#1A56DB', strokeWidth: 0 }} activeDot={{ r: 5 }} strokeWidth={2} />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="var(--dd-blue, #533afd)"
+              dot={{ r: 4, fill: 'var(--dd-blue, #533afd)', strokeWidth: 0 }}
+              activeDot={{ r: 6 }}
+              strokeWidth={2}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              label={(props: any) => {
+                const x = Number(props.x ?? 0)
+                const y = Number(props.y ?? 0)
+                const { value } = props
+                if (value === undefined) return <text />
+                const num = typeof value === 'number' ? value : parseFloat(String(value))
+                return (
+                  <text x={x} y={y - 10} fill="#50617a" fontSize={9} textAnchor="middle" fontWeight={500}>
+                    {isNaN(num) ? String(value) : num.toFixed(2)}
+                  </text>
+                )
+              }}
+            />
           </LineChart>
         </ResponsiveContainer>
       )}
