@@ -289,7 +289,7 @@ function SummaryCards({ annual, monthly, tax, usdkrw, investment }: {
 
 function SimulationContent() {
   const searchParams = useSearchParams()
-  const [tab, setTab] = useState<'watchlist' | 'portfolio'>('watchlist')
+  const [tab, setTab] = useState<'watchlist' | 'portfolio' | 'accum'>('watchlist')
   const [taxConfig, setTaxConfig] = useState<TaxConfig | null>(null)
   const [selectedAccountId, setSelectedAccountId] = useState('general')
   const [customRate, setCustomRate] = useState(0)
@@ -309,6 +309,14 @@ function SimulationContent() {
   const [showAll, setShowAll] = useState(false)
   // 선택 제외 티커 (기본 전체 선택, 제외한 것만 추적)
   const [deselectedTickers, setDeselectedTickers] = useState<Set<string>>(new Set())
+
+  // 적립 시뮬레이션 탭
+  const [accumTicker, setAccumTicker] = useState<string>('')
+  const [accumInitialShares, setAccumInitialShares] = useState(0)
+  const [accumMonthlyShares, setAccumMonthlyShares] = useState(1)
+  const [accumYears, setAccumYears] = useState(10)
+  const [accumDivGrowthRate, setAccumDivGrowthRate] = useState(5)
+  const [accumDrip, setAccumDrip] = useState(false)
 
   useEffect(() => {
     // 예비 후보함에서 넘어온 경우: ?candidates=MSFT:10,AAPL:5
@@ -446,6 +454,52 @@ function SimulationContent() {
     { gross: 0, net: 0, tax: 0 }
   )
 
+  // 적립 시뮬레이션 계산
+  const accumStock = stockMap[accumTicker]
+  const accumRows = useMemo(() => {
+    const stock = stockMap[accumTicker]
+    if (!accumTicker || !stock?.price || !stock?.div_yield) return []
+    const price = stock.price
+    const currentYield = stock.div_yield / 100
+
+    let runningPurchaseShares = accumInitialShares
+    let runningDripShares = 0
+    let runningInvested = accumInitialShares * price
+
+    const rows: Array<{
+      year: number; shares: number; totalInvested: number
+      divPerShare: number; grossDividend: number; netDividend: number
+      monthlyNet: number; cumulativeDrip: number
+    }> = []
+
+    for (let y = 1; y <= accumYears; y++) {
+      runningPurchaseShares += accumMonthlyShares * 12
+      runningInvested += accumMonthlyShares * 12 * price
+
+      const totalShares = runningPurchaseShares + runningDripShares
+      // 배당 성장률: 1년차는 현재 yield 기준, 이후 매년 복리 적용
+      const divPerShare = price * currentYield * Math.pow(1 + accumDivGrowthRate / 100, y - 1)
+      const grossDividend = totalShares * divPerShare
+      const netDividend = grossDividend * (1 - taxRate / 100)
+
+      // DRIP: 세전 배당금으로 추가 매수 (현재가 기준)
+      if (accumDrip) runningDripShares += grossDividend / price
+
+      rows.push({
+        year: y,
+        shares: totalShares,
+        totalInvested: runningInvested,
+        divPerShare,
+        grossDividend,
+        netDividend,
+        monthlyNet: netDividend / 12,
+        cumulativeDrip: runningDripShares,
+      })
+    }
+    return rows
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accumTicker, accumInitialShares, accumMonthlyShares, accumYears, accumDivGrowthRate, accumDrip, taxRate, stockData])
+
   if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">로딩 중...</div>
 
   const selectedAcc = taxConfig?.accounts.find(a => a.id === selectedAccountId)
@@ -526,8 +580,9 @@ function SimulationContent() {
       {/* 탭 */}
       <div className="flex gap-1 mb-6 bg-slate-100 rounded-xl p-1">
         {([
-          { id: 'watchlist', label: '📋 감시 종목 시뮬레이션' },
-          { id: 'portfolio', label: '💼 포트폴리오 시뮬레이션' },
+          { id: 'watchlist', label: '📋 감시 종목' },
+          { id: 'portfolio', label: '💼 포트폴리오' },
+          { id: 'accum', label: '📈 적립 시뮬레이션' },
         ] as const).map(t => (
           <button
             key={t.id}
@@ -832,6 +887,293 @@ function SimulationContent() {
                   </tbody>
                 </table>
               </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── 적립 시뮬레이션 탭 ── */}
+      {tab === 'accum' && (
+        <>
+          {/* 입력 설정 패널 */}
+          <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 mb-6">
+            <p className="text-sm font-semibold text-[#0F172A] mb-4">적립 설정</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {/* 종목 선택 */}
+              <div className="col-span-2 md:col-span-3">
+                <label className="text-xs text-[#64748B] mb-1 block">종목 선택</label>
+                <select
+                  value={accumTicker}
+                  onChange={e => setAccumTicker(e.target.value)}
+                  className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A56DB] bg-white"
+                >
+                  <option value="">— 종목을 선택하세요 —</option>
+                  {mergedList
+                    .filter(w => stockMap[w.ticker]?.price && stockMap[w.ticker]?.div_yield)
+                    .map(w => {
+                      const s = stockMap[w.ticker]
+                      return (
+                        <option key={w.ticker} value={w.ticker}>
+                          {w.ticker} — {w.name} (배당률 {s.div_yield!.toFixed(2)}% / {fmtUSD(s.price!)})
+                        </option>
+                      )
+                    })}
+                </select>
+              </div>
+
+              {/* 초기 보유 주수 */}
+              <div>
+                <label className="text-xs text-[#64748B] mb-1 block">초기 보유 주수</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="0" value={accumInitialShares}
+                    onChange={e => setAccumInitialShares(Math.max(0, Number(e.target.value)))}
+                    className="flex-1 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-[#1A56DB]"
+                  />
+                  <span className="text-xs text-[#64748B] shrink-0">주</span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5">현재 보유 주수 (없으면 0)</p>
+              </div>
+
+              {/* 월 구매 주수 */}
+              <div>
+                <label className="text-xs text-[#64748B] mb-1 block">월 구매 주수</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="1" value={accumMonthlyShares}
+                    onChange={e => setAccumMonthlyShares(Math.max(1, Number(e.target.value)))}
+                    className="flex-1 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-[#1A56DB]"
+                  />
+                  <span className="text-xs text-[#64748B] shrink-0">주/월</span>
+                </div>
+              </div>
+
+              {/* 목표 기간 */}
+              <div>
+                <label className="text-xs text-[#64748B] mb-1 block">목표 기간</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="1" max="30" value={accumYears}
+                    onChange={e => setAccumYears(Math.min(30, Math.max(1, Number(e.target.value))))}
+                    className="flex-1 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-[#1A56DB]"
+                  />
+                  <span className="text-xs text-[#64748B] shrink-0">년</span>
+                </div>
+              </div>
+
+              {/* 배당성장률 */}
+              <div>
+                <label className="text-xs text-[#64748B] mb-1 block">연간 배당성장률 (가정)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="0" max="30" step="0.5" value={accumDivGrowthRate}
+                    onChange={e => setAccumDivGrowthRate(Math.max(0, Number(e.target.value)))}
+                    className="flex-1 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-[#1A56DB]"
+                  />
+                  <span className="text-xs text-[#64748B] shrink-0">%/년</span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5">역사적 평균 DGR 참고값</p>
+              </div>
+
+              {/* DRIP */}
+              <div className="flex flex-col justify-start">
+                <label className="text-xs text-[#64748B] mb-2 block">배당 재투자 (DRIP)</label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox" checked={accumDrip}
+                    onChange={e => setAccumDrip(e.target.checked)}
+                    className="rounded accent-[#1A56DB]"
+                  />
+                  <span className="text-sm text-[#0F172A]">배당금으로 추가 매수</span>
+                </label>
+                <p className="text-[10px] text-slate-400 mt-1">세전 배당금 / 현재 주가 기준 재투자</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 선택 종목 현황 */}
+          {accumTicker && accumStock?.price && accumStock?.div_yield && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-3 mb-6 flex items-center gap-6 flex-wrap">
+              <div>
+                <p className="text-[10px] text-[#64748B]">종목</p>
+                <p className="text-sm font-bold text-[#1A56DB]">{accumTicker}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#64748B]">현재가</p>
+                <p className="text-sm font-bold text-[#0F172A]">{fmtUSD(accumStock.price)}</p>
+                {usdkrw && <p className="text-[10px] text-[#64748B]">{fmtKRW(accumStock.price * usdkrw)}</p>}
+              </div>
+              <div>
+                <p className="text-[10px] text-[#64748B]">현재 배당률</p>
+                <p className="text-sm font-bold text-emerald-600">{fmtPct(accumStock.div_yield)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#64748B]">주당 연간 배당</p>
+                <p className="text-sm font-bold text-[#0F172A]">{fmtUSD(accumStock.price * accumStock.div_yield / 100)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#64748B]">월 투자금액 ({accumMonthlyShares}주)</p>
+                <p className="text-sm font-bold text-[#0F172A]">{fmtUSD(accumMonthlyShares * accumStock.price)}</p>
+                {usdkrw && <p className="text-[10px] text-[#64748B]">{fmtKRW(accumMonthlyShares * accumStock.price * usdkrw)}/월</p>}
+              </div>
+            </div>
+          )}
+
+          {!accumTicker ? (
+            <div className="bg-slate-50 border border-[#E2E8F0] rounded-xl p-10 text-center">
+              <p className="text-2xl mb-3">📈</p>
+              <p className="text-sm font-medium text-[#0F172A] mb-1">종목을 선택하면 적립 시뮬레이션이 시작됩니다</p>
+              <p className="text-xs text-[#64748B]">월 N주씩 N년 지속 구매 시 N년 후 예상 배당 수익을 연차별로 계산합니다</p>
+            </div>
+          ) : accumRows.length === 0 ? (
+            <div className="bg-slate-50 border border-[#E2E8F0] rounded-xl p-8 text-center">
+              <p className="text-sm text-[#64748B]">선택된 종목의 가격 또는 배당률 데이터가 없습니다.</p>
+            </div>
+          ) : (
+            <>
+              {/* 마일스톤 스냅샷 카드 */}
+              {(() => {
+                const milestones = [
+                  accumRows[0],
+                  accumRows[4],
+                  accumRows[accumRows.length - 1],
+                ].filter((r, i, arr) =>
+                  r !== undefined && arr.findIndex(a => a?.year === r.year) === i
+                ).filter(Boolean)
+
+                return (
+                  <div className={`grid grid-cols-${milestones.length} gap-4 mb-6`}>
+                    {milestones.map(m => {
+                      if (!m) return null
+                      const isFinal = m.year === accumYears
+                      return (
+                        <div
+                          key={m.year}
+                          className={`rounded-xl border p-4 ${isFinal ? 'border-[#1A56DB] bg-blue-50' : 'border-[#E2E8F0] bg-white'}`}
+                        >
+                          <p className="text-xs text-[#64748B] mb-0.5">
+                            {m.year}년차{isFinal && m.year > 1 ? ' (목표)' : ''}
+                          </p>
+                          <p className={`text-lg font-bold tabular ${isFinal ? 'text-[#1A56DB]' : 'text-[#0F172A]'}`}>
+                            {fmtUSD(m.netDividend)}
+                          </p>
+                          {usdkrw && (
+                            <p className="text-xs text-[#64748B] mt-0.5">{fmtKRW(m.netDividend * usdkrw)}</p>
+                          )}
+                          <div className="mt-2 pt-2 border-t border-[#E2E8F0] space-y-0.5">
+                            <p className="text-[11px] text-[#64748B]">월평균 {fmtUSD(m.monthlyNet)}</p>
+                            {usdkrw && <p className="text-[10px] text-slate-400">{fmtKRW(m.monthlyNet * usdkrw)}/월</p>}
+                            <p className="text-[11px] text-[#64748B]">
+                              누적 {Math.round(m.shares + (accumDrip ? 0 : 0))}주
+                              {accumDrip && m.cumulativeDrip > 0 && (
+                                <span className="text-emerald-600"> +{Math.round(m.cumulativeDrip)}주 DRIP</span>
+                              )}
+                            </p>
+                            <p className="text-[11px] text-[#64748B]">투자 {fmtUSD(m.totalInvested)}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
+              {/* 연차별 상세 테이블 */}
+              <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-auto max-h-[500px]">
+                <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between sticky top-0 bg-white z-10">
+                  <p className="text-sm font-semibold text-[#0F172A]">
+                    연차별 적립 현황
+                    <span className="ml-2 text-xs font-normal text-[#64748B]">
+                      {accumTicker} · 월 {accumMonthlyShares}주 · {accumYears}년 · 배당성장률 {accumDivGrowthRate}%{accumDrip ? ' · DRIP' : ''}
+                    </span>
+                  </p>
+                  <span className="text-xs text-[#64748B]">세율 {taxRate}% 적용</span>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-[#E2E8F0] text-xs sticky top-[57px] z-10">
+                      <th className="text-center px-4 py-3 font-medium text-[#64748B]">연차</th>
+                      <th className="text-right px-3 py-3 font-medium text-[#64748B]">누적 주수</th>
+                      {accumDrip && <th className="text-right px-3 py-3 font-medium text-emerald-600">DRIP 주수</th>}
+                      <th className="text-right px-3 py-3 font-medium text-[#64748B]">주당 배당</th>
+                      <th className="text-right px-3 py-3 font-medium text-[#64748B]">연간배당 (세전)</th>
+                      <th className="text-right px-3 py-3 font-medium text-[#64748B]">세금</th>
+                      <th className="text-right px-3 py-3 font-medium text-[#1A56DB]">연간배당 (세후)</th>
+                      <th className="text-right px-3 py-3 font-medium text-[#64748B]">월평균 (세후)</th>
+                      <th className="text-right px-4 py-3 font-medium text-[#64748B]">총 투자비용</th>
+                      <th className="text-right px-4 py-3 font-medium text-[#64748B]">실효수익률</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accumRows.map((r, i) => {
+                      const taxAmt = r.grossDividend - r.netDividend
+                      const yieldOnCost = r.totalInvested > 0 ? (r.netDividend / r.totalInvested) * 100 : 0
+                      const isMilestone = r.year === 1 || r.year === 5 || r.year === accumYears
+                      return (
+                        <tr
+                          key={r.year}
+                          className={`border-b border-[#E2E8F0] last:border-0 ${
+                            r.year === accumYears
+                              ? 'bg-blue-50/70 font-semibold'
+                              : isMilestone
+                              ? 'bg-slate-50/70'
+                              : i % 2
+                              ? 'bg-slate-50/30'
+                              : ''
+                          }`}
+                        >
+                          <td className="px-4 py-2.5 text-center">
+                            <span className={`text-xs font-medium ${r.year === accumYears ? 'text-[#1A56DB]' : 'text-[#64748B]'}`}>
+                              {r.year}년차
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular text-[#0F172A]">
+                            {Math.round(r.shares).toLocaleString()}주
+                          </td>
+                          {accumDrip && (
+                            <td className="px-3 py-2.5 text-right tabular text-emerald-600 text-xs">
+                              +{Math.round(r.cumulativeDrip).toLocaleString()}주
+                            </td>
+                          )}
+                          <td className="px-3 py-2.5 text-right tabular text-[#64748B] text-xs">
+                            {fmtUSD(r.divPerShare)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular text-[#64748B]">
+                            {fmtUSD(r.grossDividend)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular text-red-500 text-xs">
+                            -{fmtUSD(taxAmt)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular text-[#1A56DB] font-medium">
+                            <p>{fmtUSD(r.netDividend)}</p>
+                            {usdkrw && <p className="text-[10px] font-normal text-[#64748B]">{fmtKRW(r.netDividend * usdkrw)}</p>}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular text-[#0F172A] text-xs">
+                            <p>{fmtUSD(r.monthlyNet)}</p>
+                            {usdkrw && <p className="text-[10px] text-[#64748B]">{fmtKRW(r.monthlyNet * usdkrw)}</p>}
+                          </td>
+                          <td className="px-4 py-2.5 text-right tabular text-[#64748B] text-xs">
+                            <p>{fmtUSD(r.totalInvested)}</p>
+                            {usdkrw && <p className="text-[10px]">{fmtKRW(r.totalInvested * usdkrw)}</p>}
+                          </td>
+                          <td className="px-4 py-2.5 text-right tabular">
+                            <span className={`text-xs font-medium ${yieldOnCost >= 10 ? 'text-emerald-600' : yieldOnCost >= 5 ? 'text-blue-600' : 'text-[#64748B]'}`}>
+                              {yieldOnCost.toFixed(2)}%
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 하단 가정 안내 */}
+              <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
+                * 주가는 현재가({accumStock?.price ? fmtUSD(accumStock.price) : '–'})로 고정 가정합니다 (주가 상승분 미반영).
+                배당성장률 {accumDivGrowthRate}%는 가정치이며 실제 배당은 분기별 선언 기준으로 변동됩니다.
+                {accumDrip && ' DRIP은 세전 배당금을 현재 주가로 재투자하는 방식으로 계산됩니다.'}
+              </p>
             </>
           )}
         </>
