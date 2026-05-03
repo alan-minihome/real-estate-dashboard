@@ -503,9 +503,9 @@ export default function SignalsPage() {
             </div>
             {addMsg && <p className="text-xs text-emerald-600 font-medium">{addMsg}</p>}
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[420px]">
             <table className="w-full text-xs">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b border-[#E2E8F0] bg-slate-50">
                   <th className="text-left px-4 py-2 font-medium text-[#64748B]">티커</th>
                   <th className="text-left px-4 py-2 font-medium text-[#64748B]">보유 대가</th>
