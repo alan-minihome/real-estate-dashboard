@@ -42,6 +42,18 @@ interface EarningsRisk {
   error: string | null
 }
 
+interface EarningsEvent {
+  id: number
+  ticker: string
+  reported_date: string
+  headline: string | null
+  summary: string | null
+  eps_surprise_pct: number | null
+  guidance_tone: 'positive' | 'neutral' | 'negative' | null
+  source_url: string | null
+  fetched_at: string
+}
+
 export default function CandidatesPage() {
   const router = useRouter()
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -54,6 +66,9 @@ export default function CandidatesPage() {
   const [icrLoading, setIcrLoading] = useState(false)
   const [riskData, setRiskData] = useState<Record<string, EarningsRisk>>({})
   const [riskLoading, setRiskLoading] = useState(false)
+  const [earningsEvents, setEarningsEvents] = useState<EarningsEvent[]>([])
+  const [earningsTab, setEarningsTab] = useState<'recent' | 'history'>('recent')
+  const [expandedTicker, setExpandedTicker] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -82,6 +97,12 @@ export default function CandidatesPage() {
           .then((d: Record<string, EarningsRisk>) => setRiskData(d))
           .catch(() => {})
           .finally(() => setRiskLoading(false))
+
+        // DB에 저장된 실적 뉴스 조회 (dividend-news-watcher 수집 결과)
+        fetch(`/api/earnings-events?tickers=${tStr}`)
+          .then(r => r.json())
+          .then((d: EarningsEvent[]) => Array.isArray(d) && setEarningsEvents(d))
+          .catch(() => {})
       }
     }
     if (mr?.USDKRW?.price) setUsdkrw(mr.USDKRW.price)
@@ -429,6 +450,188 @@ export default function CandidatesPage() {
           </div>
         </div>
       )}
+
+      {/* 실적 이력 — 최근 실적 / 종목별 이력 탭 */}
+      {earningsEvents.length > 0 && (() => {
+        // 날짜별 그룹 (최근 실적 탭)
+        const byDate: Record<string, EarningsEvent[]> = {}
+        earningsEvents.forEach(e => {
+          if (!byDate[e.reported_date]) byDate[e.reported_date] = []
+          byDate[e.reported_date].push(e)
+        })
+        const dates = Object.keys(byDate).sort().reverse()
+
+        // 종목별 그룹 (종목별 이력 탭) — watching 순서 유지
+        const watchingTickers = watching.map(c => c.ticker)
+        const byTicker: Record<string, EarningsEvent[]> = {}
+        watchingTickers.forEach(t => {
+          byTicker[t] = earningsEvents
+            .filter(e => e.ticker === t)
+            .sort((a, b) => b.reported_date.localeCompare(a.reported_date))
+        })
+
+        const toneConfig = (tone: string | null) => {
+          if (tone === 'positive') return { dot: '●', cls: 'text-emerald-500', badge: 'text-emerald-700 bg-emerald-50 border-emerald-200', label: '▲ 긍정' }
+          if (tone === 'negative') return { dot: '✕', cls: 'text-red-500', badge: 'text-red-700 bg-red-50 border-red-200', label: '▼ 부정' }
+          return { dot: '○', cls: 'text-slate-400', badge: 'text-slate-600 bg-slate-50 border-slate-200', label: '→ 중립' }
+        }
+
+        return (
+          <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+            {/* 헤더 + 탭 */}
+            <div className="px-4 py-3 border-b border-[#E2E8F0] bg-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setEarningsTab('recent')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    earningsTab === 'recent'
+                      ? 'bg-[#1A56DB] text-white'
+                      : 'text-[#64748B] hover:bg-slate-200'
+                  }`}
+                >📅 최근 실적</button>
+                <button
+                  onClick={() => setEarningsTab('history')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    earningsTab === 'history'
+                      ? 'bg-[#1A56DB] text-white'
+                      : 'text-[#64748B] hover:bg-slate-200'
+                  }`}
+                >📊 종목별 이력</button>
+              </div>
+              <span className="text-[10px] text-[#94A3B8]">매주 월요일 자동 수집</span>
+            </div>
+
+            {/* ── 최근 실적 탭 ── */}
+            {earningsTab === 'recent' && (
+              <div className="divide-y divide-[#E2E8F0]">
+                {dates.map(date => (
+                  <div key={date}>
+                    <div className="px-4 py-2 bg-slate-50/60 flex items-center gap-2">
+                      <span className="text-xs font-semibold text-[#64748B]">{date}</span>
+                      <span className="text-[10px] text-[#94A3B8]">실적 발표</span>
+                    </div>
+                    {byDate[date].map(e => {
+                      const tc = toneConfig(e.guidance_tone)
+                      return (
+                        <div key={e.id} className="px-4 py-3 flex items-start gap-3 hover:bg-slate-50/50 transition-colors">
+                          <span className="text-sm font-bold text-[#1A56DB] w-14 shrink-0 pt-0.5">{e.ticker}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              {e.eps_surprise_pct !== null && (
+                                <span className={`text-xs font-semibold ${e.eps_surprise_pct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                  EPS {e.eps_surprise_pct >= 0 ? '+' : ''}{e.eps_surprise_pct}%
+                                </span>
+                              )}
+                              {e.guidance_tone && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${tc.badge}`}>
+                                  {tc.label}
+                                </span>
+                              )}
+                            </div>
+                            {e.headline && (
+                              <p className="text-xs font-medium text-[#0F172A] mb-1 leading-snug">{e.headline}</p>
+                            )}
+                            {e.summary && (
+                              <p className="text-xs text-[#64748B] leading-relaxed">{e.summary}</p>
+                            )}
+                            {e.source_url && (
+                              <a href={e.source_url} target="_blank" rel="noopener noreferrer"
+                                className="text-[10px] text-[#1A56DB] hover:underline mt-1 inline-block">원문 →</a>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── 종목별 이력 탭 ── */}
+            {earningsTab === 'history' && (
+              <div className="divide-y divide-[#E2E8F0]">
+                {watchingTickers.filter(t => byTicker[t]?.length > 0).map(ticker => {
+                  const events = byTicker[ticker]
+                  const isExpanded = expandedTicker === ticker
+                  const latestTone = events[0]?.guidance_tone
+                  const hasWarning = latestTone === 'negative' || latestTone === 'neutral'
+                  const candidateName = watching.find(c => c.ticker === ticker)?.name || ticker
+
+                  return (
+                    <div key={ticker}>
+                      <button
+                        onClick={() => setExpandedTicker(isExpanded ? null : ticker)}
+                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+                      >
+                        <span className={`text-sm font-bold w-14 shrink-0 ${hasWarning && latestTone === 'negative' ? 'text-red-600' : 'text-[#1A56DB]'}`}>
+                          {ticker}
+                        </span>
+                        {/* 트렌드 도트 */}
+                        <div className="flex items-center gap-1">
+                          {events.map((e, i) => {
+                            const tc = toneConfig(e.guidance_tone)
+                            return (
+                              <span key={i} className={`text-base leading-none ${tc.cls}`} title={`${e.reported_date} · EPS ${e.eps_surprise_pct !== null ? (e.eps_surprise_pct >= 0 ? '+' : '') + e.eps_surprise_pct + '%' : '–'}`}>
+                                {tc.dot}
+                              </span>
+                            )
+                          })}
+                        </div>
+                        {/* 날짜 태그들 */}
+                        <div className="flex items-center gap-1 flex-wrap flex-1">
+                          {events.map((e, i) => (
+                            <span key={i} className="text-[10px] text-[#94A3B8]">{e.reported_date.slice(0, 7)}</span>
+                          ))}
+                        </div>
+                        {latestTone === 'neutral' && (
+                          <span className="text-[10px] text-amber-600 font-medium shrink-0">최근 중립 주의</span>
+                        )}
+                        {latestTone === 'negative' && (
+                          <span className="text-[10px] text-red-600 font-medium shrink-0">⚠️ 최근 부정</span>
+                        )}
+                        <span className="text-[#94A3B8] text-xs shrink-0">{isExpanded ? '▲' : '▼'}</span>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t border-[#E2E8F0] bg-slate-50/40">
+                          <p className="px-4 pt-2 pb-1 text-xs text-[#64748B] font-medium">{candidateName} · 분기별 실적</p>
+                          {events.map(e => {
+                            const tc = toneConfig(e.guidance_tone)
+                            return (
+                              <div key={e.id} className="px-4 py-2.5 border-t border-[#E2E8F0]/60 flex items-start gap-3">
+                                <div className="flex items-center gap-1.5 w-28 shrink-0 pt-0.5">
+                                  <span className={`text-sm ${tc.cls}`}>{tc.dot}</span>
+                                  <span className="text-xs text-[#64748B]">{e.reported_date}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                    {e.eps_surprise_pct !== null && (
+                                      <span className={`text-xs font-semibold ${e.eps_surprise_pct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                        EPS {e.eps_surprise_pct >= 0 ? '+' : ''}{e.eps_surprise_pct}%
+                                      </span>
+                                    )}
+                                    <span className={`text-[10px] px-1 py-0.5 rounded border ${tc.badge}`}>{tc.label}</span>
+                                  </div>
+                                  {e.headline && <p className="text-xs font-medium text-[#0F172A] mb-0.5 leading-snug">{e.headline}</p>}
+                                  {e.summary && <p className="text-xs text-[#64748B] leading-relaxed">{e.summary}</p>}
+                                  {e.source_url && (
+                                    <a href={e.source_url} target="_blank" rel="noopener noreferrer"
+                                      className="text-[10px] text-[#1A56DB] hover:underline mt-0.5 inline-block">원문 →</a>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* 매수 완료 종목 */}
       {purchased.length > 0 && (
