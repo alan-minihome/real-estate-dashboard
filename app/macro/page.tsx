@@ -169,13 +169,13 @@ function MacroChart({ ind }: { ind: typeof FRED_INDICATORS[0] }) {
   useEffect(() => {
     fetch(`/api/macro/${ind.id}`).then(r => r.json()).then(d => {
       const rows = Array.isArray(d) ? [...d].reverse() : []
-      const sixMonthsAgo = new Date()
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-      const filtered = rows.filter(r => new Date(r.recorded_at) >= sixMonthsAgo)
+      const oneYearAgo = new Date()
+      oneYearAgo.setMonth(oneYearAgo.getMonth() - 12)
+      const filtered = rows.filter(r => new Date(r.recorded_at) >= oneYearAgo)
       // 월별 dedup — 같은 달 중 마지막 레코드만 유지
       const monthMap: Record<string, MacroRow> = {}
       for (const r of filtered) monthMap[r.recorded_at.slice(0, 7)] = r
-      setData(Object.values(monthMap))
+      setData(Object.values(monthMap).sort((a, b) => a.recorded_at.localeCompare(b.recorded_at)))
     }).finally(() => setLoading(false))
   }, [ind.id])
 
@@ -202,7 +202,7 @@ function MacroChart({ ind }: { ind: typeof FRED_INDICATORS[0] }) {
       </div>
       {totalChange !== null && (
         <p className="text-[10px] text-slate-400 mb-1">
-          6개월 변화: <span className={totalChange >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+          12개월 변화: <span className={totalChange >= 0 ? 'text-emerald-600' : 'text-red-600'}>
             {totalChange >= 0 ? '+' : ''}{totalChange.toFixed(2)}{ind.unit}
           </span>
         </p>
@@ -409,7 +409,7 @@ export default function MacroPage() {
       )}
 
       {/* ── SECTION 3: FRED 개별 차트 (6개월) ── */}
-      <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wide mb-3">FRED 상세 차트 (최근 6개월)</h2>
+      <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wide mb-3">FRED 상세 차트 (최근 12개월)</h2>
       <div className="grid grid-cols-1 gap-4">
         {FRED_INDICATORS.map(ind => <MacroChart key={ind.id} ind={ind} />)}
       </div>
