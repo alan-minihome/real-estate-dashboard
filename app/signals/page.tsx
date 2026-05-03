@@ -241,40 +241,52 @@ export default function SignalsPage() {
       fetch('/api/universe').then(r => r.json()).catch(() => ({ universe: [] })),
       fetch('/api/candidates').then(r => r.json()).catch(() => []),
     ]).then(([stocksData, macroData, marketData, invData, invHistory, universeData, candidatesData]) => {
-      // screening_results (감시·후보함) + universe_screening (S&P 500) 합치기
-      // screening_results 우선, 없으면 universe_screening에서 가져옴
-      const watchlistScreening = stocksData.screening || []
-      const watchlistTickers = new Set(watchlistScreening.map((s: { ticker: string }) => s.ticker))
-      const universeScreening = (universeData.universe || [])
-        .filter((u: { ticker: string }) => !watchlistTickers.has(u.ticker))
-        .map((u: { ticker: string; overall_pass: number; buy_signal: number; signal_reason: string | null; checks_json?: string | Record<string, number | null> }) => {
-          // checks_json 파싱 (string이면 JSON.parse, object면 그대로)
-          let checks: Record<string, number | null> = {}
-          if (u.checks_json) {
-            try {
-              checks = typeof u.checks_json === 'string'
-                ? JSON.parse(u.checks_json)
-                : u.checks_json
-            } catch { /* ignore */ }
-          }
-          return {
-            ticker:          u.ticker,
-            overall_pass:    u.overall_pass,
-            buy_signal:      u.buy_signal,
-            signal_reason:   u.signal_reason,
-            pass_payout:     checks.payout_ratio_max ?? null,
-            pass_div_growth: checks.div_growth_5y_min ?? null,
-            pass_peg:        checks.peg_max ?? null,
-            pass_de:         checks.de_ratio_max ?? null,
-            pass_roe:        checks.roe_min ?? null,
-            pass_eps:        checks.eps_growth_min ?? null,
-          }
-        })
+      // screening_results + universe_screening 병합 — screened_at 기준 최신 우선
+      // (screening_results가 stale하면 universe_screening의 최신 데이터 사용)
+      type RawUniverse = { ticker: string; overall_pass: number; buy_signal: number; signal_reason: string | null; checks_json?: string | Record<string, number | null>; screened_at?: string }
+      type RawScreening = { ticker: string; overall_pass: number; buy_signal: number; signal_reason: string | null; screened_at?: string;
+        pass_payout?: number | null; pass_div_growth?: number | null; pass_peg?: number | null; pass_de?: number | null; pass_roe?: number | null; pass_eps?: number | null }
+
+      function parseUniEntry(u: RawUniverse): RawScreening {
+        let checks: Record<string, number | null> = {}
+        if (u.checks_json) {
+          try { checks = typeof u.checks_json === 'string' ? JSON.parse(u.checks_json) : u.checks_json as Record<string, number | null> } catch { /* ignore */ }
+        }
+        return {
+          ticker: u.ticker, overall_pass: u.overall_pass, buy_signal: u.buy_signal,
+          signal_reason: u.signal_reason, screened_at: u.screened_at,
+          pass_payout: checks.payout_ratio_max ?? null, pass_div_growth: checks.div_growth_5y_min ?? null,
+          pass_peg: checks.peg_max ?? null, pass_de: checks.de_ratio_max ?? null,
+          pass_roe: checks.roe_min ?? null, pass_eps: checks.eps_growth_min ?? null,
+        }
+      }
+
+      const watchlistScreeningRaw: RawScreening[] = stocksData.screening || []
+      const universeRaw: RawUniverse[] = universeData.universe || []
+      const wlMap = Object.fromEntries(watchlistScreeningRaw.map(s => [s.ticker, s]))
+      const uniMap = Object.fromEntries(universeRaw.map(u => [u.ticker, u]))
+
+      // 두 소스 모두 있는 경우: screened_at 최신 우선 (구데이터가 screening_results에 남아있는 경우 방지)
+      const allTickers = new Set([...Object.keys(wlMap), ...Object.keys(uniMap)])
+      const mergedScreening: RawScreening[] = []
+      for (const t of allTickers) {
+        const wl = wlMap[t]
+        const uni = uniMap[t]
+        if (wl && uni) {
+          const wlAt = wl.screened_at ?? ''
+          const uniAt = uni.screened_at ?? ''
+          mergedScreening.push(uniAt > wlAt ? parseUniEntry(uni) : wl)
+        } else if (wl) {
+          mergedScreening.push(wl)
+        } else if (uni) {
+          mergedScreening.push(parseUniEntry(uni))
+        }
+      }
+      const watchlistScreening = mergedScreening
+      const universeScreening: RawScreening[] = []  // 이미 mergedScreening에 통합
+
       // candidates에서도 보충 (universe·watchlist 둘 다에 없는 후보 종목 대비)
-      const wlAndUniTickers = new Set([
-        ...watchlistScreening.map((s: { ticker: string }) => s.ticker),
-        ...universeScreening.map((s: { ticker: string }) => s.ticker),
-      ])
+      const wlAndUniTickers = new Set(watchlistScreening.map(s => s.ticker))
       const candidatesScreening = (Array.isArray(candidatesData) ? candidatesData : [])
         .filter((c: { ticker: string; overall_pass?: number | null }) =>
           !wlAndUniTickers.has(c.ticker) && c.overall_pass !== null && c.overall_pass !== undefined)
@@ -287,7 +299,7 @@ export default function SignalsPage() {
           pass_de: c.pass_de, pass_roe: c.pass_roe, pass_eps: c.pass_eps,
         }))
       setStocks(stocksData.stocks || [])
-      setScreening([...watchlistScreening, ...universeScreening, ...candidatesScreening])
+      setScreening([...watchlistScreening, ...universeScreening, ...candidatesScreening] as Screening[])
       setCustomWatchlist(stocksData.customWatchlist || [])
 
       // nameMap: universe(이름 풍부) + candidates + WATCHLIST + customWatchlist 통합
