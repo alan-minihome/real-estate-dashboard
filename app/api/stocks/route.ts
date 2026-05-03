@@ -10,6 +10,8 @@ interface UniverseRow {
   signal_reason: string | null
   checks_json: string | null
   criteria_json: string | null
+  eps_growth: number | null
+  div_growth_5y: number | null
 }
 
 export function GET() {
@@ -55,6 +57,8 @@ export function GET() {
         pass_de:         checks.de_ratio_max       ?? null,
         pass_roe:        checks.roe_min            ?? null,
         pass_eps:        checks.eps_growth_min     ?? null,
+        eps_growth:      u.eps_growth              ?? null,
+        div_growth_5y:   u.div_growth_5y           ?? null,
       }
     })
 

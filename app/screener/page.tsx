@@ -9,10 +9,13 @@ interface Screening {
   ticker: string; overall_pass: number; buy_signal: number; signal_reason: string|null
   pass_payout: number; pass_div_growth: number; pass_peg: number; pass_de: number; pass_roe: number; pass_eps: number
   checks_json?: string | Record<string, number | null>
+  eps_growth: number | null
+  div_growth_5y: number | null
 }
 
 interface StockPrice {
   ticker: string; price: number | null; div_yield: number | null
+  eps_growth?: number | null; div_growth_5y?: number | null
 }
 
 interface HistoryEntry {
@@ -476,6 +479,8 @@ export default function ScreenerPage() {
               <th className="text-left px-4 py-3 font-medium text-[#64748B] sticky left-0 z-30 bg-slate-50 border-r border-[#E2E8F0]">티커</th>
               <th className="text-left px-4 py-3 font-medium text-[#64748B] sticky left-[88px] z-30 bg-slate-50 border-r border-[#E2E8F0] min-w-[100px]">종목명</th>
               <th className="text-right px-3 py-3 font-medium text-[#64748B]">주가</th>
+              <th className="text-right px-3 py-3 font-medium text-[#64748B] text-xs">EPS 성장</th>
+              <th className="text-right px-3 py-3 font-medium text-[#64748B] text-xs">배당 성장</th>
               {activeCriteria.map(c => (
                 <th key={c.key} className="text-center px-3 py-3 font-medium text-[#64748B] text-xs">{c.label}</th>
               ))}
@@ -512,7 +517,10 @@ export default function ScreenerPage() {
                 return (
                   <tr key={w.ticker} className={`border-b border-[#E2E8F0] last:border-0 ${rowBg}`}>
                     <td className={`px-4 py-3 font-bold text-[#1A56DB] sticky left-0 z-10 border-r border-[#E2E8F0] ${rowBg}`}>
-                      {w.ticker}
+                      <a href={`https://finviz.com/quote.ashx?t=${w.ticker}`} target="_blank" rel="noopener"
+                        className="hover:underline" title="Finviz에서 상세 분석 보기">
+                        {w.ticker}
+                      </a>
                       {w.source === 'candidate' && <span className="ml-1 text-[10px] bg-blue-100 text-[#1A56DB] px-1.5 py-0.5 rounded-full align-middle">후보</span>}
                       {w.source === 'custom' && <span className="ml-1 text-[10px] bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded-full align-middle">감시</span>}
                     </td>
@@ -524,6 +532,20 @@ export default function ScreenerPage() {
                           {usdkrw && <p className="text-[10px] text-[#64748B]">₩{Math.round(stockPrices[w.ticker].price! * usdkrw).toLocaleString()}</p>}
                         </div>
                       ) : <span className="text-slate-300">–</span>}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular text-xs">
+                      {(() => {
+                        const v = sc?.eps_growth ?? stockPrices[w.ticker]?.eps_growth
+                        if (v == null) return <span className="text-slate-300">–</span>
+                        return <span className={`font-medium ${v >= 10 ? 'text-emerald-600' : v >= 5 ? 'text-blue-600' : 'text-[#64748B]'}`}>{v.toFixed(1)}%</span>
+                      })()}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular text-xs">
+                      {(() => {
+                        const v = sc?.div_growth_5y ?? stockPrices[w.ticker]?.div_growth_5y
+                        if (v == null) return <span className="text-slate-300">–</span>
+                        return <span className={`font-medium ${v >= 10 ? 'text-emerald-600' : v >= 5 ? 'text-blue-600' : 'text-[#64748B]'}`}>{v.toFixed(1)}%</span>
+                      })()}
                     </td>
                     {activeCriteria.map(c => {
                       // yield_vs_avg_min은 buy_signal로 판단 (checks_json에 없음)

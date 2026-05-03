@@ -295,11 +295,384 @@ const DGR_GUIDE = [
   { type: 'S&P 500 역사적 평균',           range: '5~6%',  dgr: 5.5, examples: '— (기본 권장값)',         badge: 'bg-slate-100 text-slate-600' },
 ] as const
 
+// ─── 목표 역산 시뮬레이터 ────────────────────────────────────────────────────
+
+interface GoalTicker { ticker: string; weight: number }
+
+function GoalSimulator({
+  stockData, usdkrw, taxRate, allTickers,
+}: {
+  stockData: StockData[]
+  usdkrw: number | null
+  taxRate: number
+  allTickers: { ticker: string; name: string }[]
+}) {
+  const [targetKRW, setTargetKRW] = useState(300)
+  const [years, setYears] = useState(20)
+  const [dgr, setDgr] = useState(7)
+  const [mode, setMode] = useState<'single' | 'multi'>('single')
+  const [singleTicker, setSingleTicker] = useState(allTickers[0]?.ticker || '')
+  const [multiItems, setMultiItems] = useState<GoalTicker[]>(
+    allTickers.slice(0, 2).map((t, i) => ({ ticker: t.ticker, weight: i === 0 ? 60 : 40 }))
+  )
+  const [showDgrGuide, setShowDgrGuide] = useState(false)
+
+  const stockMap = useMemo(
+    () => Object.fromEntries(stockData.map(s => [s.ticker, s])),
+    [stockData]
+  )
+
+  const result = useMemo(() => {
+    if (!usdkrw) return null
+    const targetMonthlyUSD = (targetKRW * 10000) / usdkrw
+    const targetAnnualNetUSD = targetMonthlyUSD * 12
+    const targetAnnualGrossUSD = targetAnnualNetUSD / (1 - taxRate / 100)
+
+    if (mode === 'single') {
+      const s = stockMap[singleTicker]
+      if (!s?.price || !s?.div_yield) return null
+      const annualDPS = s.price * (s.div_yield / 100)
+      if (annualDPS <= 0) return null
+      const growthFactor = Math.pow(1 + dgr / 100, years)
+      const monthlyShares = Math.ceil(targetAnnualGrossUSD / (12 * years * annualDPS * growthFactor))
+      const monthlyInvestUSD = monthlyShares * s.price
+      const rows = Array.from({ length: years }, (_, i) => {
+        const y = i + 1
+        const totalShares = monthlyShares * 12 * y
+        const dps = annualDPS * Math.pow(1 + dgr / 100, y)
+        const gross = totalShares * dps
+        const net = gross * (1 - taxRate / 100)
+        const monthly = net / 12
+        const yoc = (gross / (monthlyInvestUSD * 12 * y)) * 100
+        return { year: y, gross, net, monthly, yoc }
+      })
+      return {
+        mode: 'single' as const,
+        items: [{ ticker: singleTicker, name: allTickers.find(t => t.ticker === singleTicker)?.name || singleTicker, monthlyShares, monthlyInvestUSD, price: s.price }],
+        totalMonthlyInvestUSD: monthlyInvestUSD,
+        totalInvestUSD: monthlyInvestUSD * 12 * years,
+        rows, targetAnnualGrossUSD, targetAnnualNetUSD,
+      }
+    }
+
+    // 복수 종목
+    const totalWeight = multiItems.reduce((acc, i) => acc + i.weight, 0)
+    if (totalWeight <= 0) return null
+    type ItemResult = { ticker: string; name: string; weight: number; monthlyShares: number; monthlyInvestUSD: number; price: number; annualDPS: number }
+    const items: ItemResult[] = multiItems.flatMap(item => {
+      const s = stockMap[item.ticker]
+      if (!s?.price || !s?.div_yield) return []
+      const annualDPS = s.price * (s.div_yield / 100)
+      if (annualDPS <= 0) return []
+      const itemTargetGross = targetAnnualGrossUSD * (item.weight / totalWeight)
+      const growthFactor = Math.pow(1 + dgr / 100, years)
+      const monthlyShares = Math.ceil(itemTargetGross / (12 * years * annualDPS * growthFactor))
+      return [{ ticker: item.ticker, name: allTickers.find(t => t.ticker === item.ticker)?.name || item.ticker, weight: item.weight, monthlyShares, monthlyInvestUSD: monthlyShares * s.price, price: s.price, annualDPS }]
+    })
+    const totalMonthlyInvestUSD = items.reduce((acc, i) => acc + i.monthlyInvestUSD, 0)
+    const rows = Array.from({ length: years }, (_, i) => {
+      const y = i + 1
+      let gross = 0
+      items.forEach(item => { gross += item.monthlyShares * 12 * y * item.annualDPS * Math.pow(1 + dgr / 100, y) })
+      const net = gross * (1 - taxRate / 100)
+      const monthly = net / 12
+      const invested = totalMonthlyInvestUSD * 12 * y
+      return { year: y, gross, net, monthly, yoc: invested > 0 ? (gross / invested) * 100 : 0 }
+    })
+    return {
+      mode: 'multi' as const,
+      items,
+      totalMonthlyInvestUSD,
+      totalInvestUSD: totalMonthlyInvestUSD * 12 * years,
+      rows, targetAnnualGrossUSD, targetAnnualNetUSD,
+    }
+  }, [targetKRW, years, dgr, mode, singleTicker, multiItems, stockMap, usdkrw, taxRate, allTickers])
+
+  const totalWeight = multiItems.reduce((acc, i) => acc + i.weight, 0)
+
+  const addMultiItem = () => {
+    const used = new Set(multiItems.map(i => i.ticker))
+    const next = allTickers.find(t => !used.has(t.ticker))
+    if (next) setMultiItems(prev => [...prev, { ticker: next.ticker, weight: 20 }])
+  }
+
+  return (
+    <div>
+      {/* 목표 설정 */}
+      <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 mb-5">
+        <p className="text-sm font-semibold text-[#0F172A] mb-4">🎯 목표 설정</p>
+        <div className="grid grid-cols-3 gap-5">
+          <div>
+            <label className="block text-xs text-[#64748B] mb-1.5">목표 월 배당 (세후)</label>
+            <div className="flex items-center gap-2">
+              <input type="number" value={targetKRW} min={1} step={10}
+                onChange={e => setTargetKRW(Number(e.target.value))}
+                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-[#1A56DB]" />
+              <span className="text-sm text-[#64748B] shrink-0">만원</span>
+            </div>
+            {usdkrw && <p className="text-[10px] text-[#64748B] mt-1">≈ {fmtUSD((targetKRW * 10000) / usdkrw)}/월</p>}
+          </div>
+          <div>
+            <label className="block text-xs text-[#64748B] mb-1.5">투자 기간</label>
+            <div className="flex items-center gap-2">
+              <input type="number" value={years} min={1} max={50}
+                onChange={e => setYears(Number(e.target.value))}
+                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-[#1A56DB]" />
+              <span className="text-sm text-[#64748B] shrink-0">년</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-[#64748B] mb-1.5">
+              배당 성장률 (DGR){' '}
+              <button onClick={() => setShowDgrGuide(v => !v)} className="text-[#1A56DB] font-bold">?</button>
+            </label>
+            <div className="flex items-center gap-2">
+              <input type="number" value={dgr} min={0} max={30} step={0.5}
+                onChange={e => setDgr(Number(e.target.value))}
+                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm font-bold text-[#0F172A] focus:outline-none focus:border-[#1A56DB]" />
+              <span className="text-sm text-[#64748B] shrink-0">%</span>
+            </div>
+          </div>
+        </div>
+        {showDgrGuide && (
+          <div className="mt-4 rounded-lg border border-[#E2E8F0] overflow-hidden">
+            <table className="w-full text-xs">
+              <thead><tr className="bg-slate-50 border-b border-[#E2E8F0]">
+                <th className="px-3 py-2 text-left font-medium text-[#64748B]">종류</th>
+                <th className="px-3 py-2 text-right font-medium text-[#64748B]">DGR 범위</th>
+                <th className="px-3 py-2 text-left font-medium text-[#64748B]">대표 종목</th>
+              </tr></thead>
+              <tbody>
+                {DGR_GUIDE.map(g => (
+                  <tr key={g.type} className="border-b border-[#E2E8F0] last:border-0">
+                    <td className="px-3 py-1.5 text-[#0F172A]">{g.type}</td>
+                    <td className="px-3 py-1.5 text-right"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${g.badge}`}>{g.range}</span></td>
+                    <td className="px-3 py-1.5 text-[#64748B]">{g.examples}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {usdkrw && (
+          <div className="mt-4 pt-4 border-t border-[#E2E8F0] flex gap-6 text-xs text-[#64748B]">
+            <span>목표 세후 <b className="text-[#0F172A]">{fmtKRW(targetKRW * 10000)}/월</b></span>
+            <span>세전 환산 <b className="text-[#0F172A]">{fmtKRW((targetKRW * 10000) / (1 - taxRate / 100))}/월</b></span>
+            <span>연간 세전 <b className="text-[#0F172A]">{result ? fmtUSD(result.targetAnnualGrossUSD) : '—'}</b></span>
+          </div>
+        )}
+      </div>
+
+      {/* 모드 토글 */}
+      <div className="flex gap-1 mb-5 bg-slate-100 rounded-xl p-1">
+        {([{ id: 'single', label: '🔍 단일 종목' }, { id: 'multi', label: '📋 복수 종목' }] as const).map(m => (
+          <button key={m.id} onClick={() => setMode(m.id)}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${mode === m.id ? 'bg-white shadow-sm text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 종목 설정 */}
+      {mode === 'single' ? (
+        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 mb-5">
+          <label className="block text-xs text-[#64748B] mb-2">종목 선택</label>
+          <select value={singleTicker} onChange={e => setSingleTicker(e.target.value)}
+            className="border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#0F172A] focus:outline-none focus:border-[#1A56DB] w-72">
+            {allTickers.map(t => <option key={t.ticker} value={t.ticker}>{t.ticker} — {t.name}</option>)}
+          </select>
+          {singleTicker && stockMap[singleTicker] && (
+            <div className="mt-3 flex gap-5 text-xs text-[#64748B]">
+              <span>현재가 <b className="text-[#0F172A]">{fmtUSD(stockMap[singleTicker].price ?? 0)}</b></span>
+              <span>배당수익률 <b className="text-[#0F172A]">{fmtPct(stockMap[singleTicker].div_yield ?? 0)}</b></span>
+              <span>연간 DPS <b className="text-[#0F172A]">{fmtUSD((stockMap[singleTicker].price ?? 0) * ((stockMap[singleTicker].div_yield ?? 0) / 100))}</b></span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 mb-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-[#0F172A]">종목 구성</p>
+            <div className="flex items-center gap-4">
+              <span className={`text-xs font-medium ${Math.abs(totalWeight - 100) > 0.5 ? 'text-red-500' : 'text-emerald-600'}`}>
+                비중 합계: {totalWeight}%
+              </span>
+              <button onClick={addMultiItem} className="text-xs text-[#1A56DB] hover:underline">+ 종목 추가</button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {multiItems.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-3">
+                <select value={item.ticker}
+                  onChange={e => setMultiItems(prev => prev.map((it, i) => i === idx ? { ...it, ticker: e.target.value } : it))}
+                  className="flex-1 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#0F172A] focus:outline-none focus:border-[#1A56DB]">
+                  {allTickers.map(t => <option key={t.ticker} value={t.ticker}>{t.ticker} — {t.name}</option>)}
+                </select>
+                {stockMap[item.ticker] && (
+                  <span className="text-xs text-[#64748B] shrink-0 w-24">{fmtPct(stockMap[item.ticker].div_yield ?? 0)} 배당</span>
+                )}
+                <div className="flex items-center gap-1 shrink-0">
+                  <input type="number" value={item.weight} min={0} max={100}
+                    onChange={e => setMultiItems(prev => prev.map((it, i) => i === idx ? { ...it, weight: Number(e.target.value) } : it))}
+                    className="w-16 text-right border border-[#E2E8F0] rounded-lg px-2 py-2 text-sm font-bold text-[#1A56DB] focus:outline-none focus:border-[#1A56DB]" />
+                  <span className="text-sm text-[#64748B]">%</span>
+                </div>
+                <button onClick={() => setMultiItems(prev => prev.filter((_, i) => i !== idx))}
+                  className="text-slate-400 hover:text-red-500 text-xl leading-none shrink-0">×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 결과 */}
+      {result ? (
+        <>
+          {/* 요약 카드 */}
+          <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="rounded-xl border border-[#1A56DB] bg-blue-50 p-4">
+              <p className="text-xs text-[#64748B] mb-1">월 필요 투자금</p>
+              <p className="text-2xl font-bold tabular text-[#1A56DB]">
+                {usdkrw ? fmtKRW(result.totalMonthlyInvestUSD * usdkrw) : fmtUSD(result.totalMonthlyInvestUSD)}
+              </p>
+              <p className="text-xs text-[#64748B] mt-0.5">{fmtUSD(result.totalMonthlyInvestUSD)}/월</p>
+            </div>
+            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4">
+              <p className="text-xs text-[#64748B] mb-1">총 투자 원금 ({years}년)</p>
+              <p className="text-2xl font-bold tabular text-[#0F172A]">
+                {usdkrw ? fmtKRW(result.totalInvestUSD * usdkrw) : fmtUSD(result.totalInvestUSD)}
+              </p>
+              <p className="text-xs text-[#64748B] mt-0.5">{fmtUSD(result.totalInvestUSD)}</p>
+            </div>
+          </div>
+
+          {/* 종목별 매월 구매 주수 */}
+          <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden mb-5">
+            <div className="px-5 py-3 border-b border-[#E2E8F0] bg-slate-50">
+              <p className="text-sm font-semibold text-[#0F172A]">종목별 매월 구매 계획</p>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-[#E2E8F0] text-xs">
+                  <th className="text-left px-4 py-2.5 font-medium text-[#64748B]">티커</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-[#64748B]">종목명</th>
+                  {result.mode === 'multi' && <th className="text-right px-3 py-2.5 font-medium text-[#64748B]">비중</th>}
+                  <th className="text-right px-3 py-2.5 font-medium text-[#64748B]">현재가</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#64748B]">매월 구매</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-[#1A56DB]">월 투자금</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.items.map((item, idx) => (
+                  <tr key={item.ticker} className={`border-b border-[#E2E8F0] last:border-0 ${idx % 2 ? 'bg-slate-50/40' : ''}`}>
+                    <td className="px-4 py-3 font-bold text-[#1A56DB] text-xs">{item.ticker}</td>
+                    <td className="px-3 py-3 text-[#0F172A]">{item.name}</td>
+                    {result.mode === 'multi' && (
+                      <td className="px-3 py-3 text-right text-xs text-[#64748B]">{'weight' in item ? `${(item as {weight: number}).weight}%` : ''}</td>
+                    )}
+                    <td className="px-3 py-3 text-right tabular text-[#64748B]">
+                      <p>{fmtUSD(item.price)}</p>
+                      {usdkrw && <p className="text-[10px]">{fmtKRW(item.price * usdkrw)}</p>}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular font-bold text-[#0F172A] text-lg">{item.monthlyShares.toLocaleString()}주</td>
+                    <td className="px-4 py-3 text-right tabular font-bold text-[#1A56DB]">
+                      <p>{fmtUSD(item.monthlyInvestUSD)}</p>
+                      {usdkrw && <p className="text-xs font-normal text-[#64748B]">{fmtKRW(item.monthlyInvestUSD * usdkrw)}</p>}
+                    </td>
+                  </tr>
+                ))}
+                {result.mode === 'multi' && result.items.length > 1 && (
+                  <tr className="bg-blue-50/60 border-t-2 border-[#1A56DB] font-semibold text-sm">
+                    <td colSpan={4} className="px-4 py-3 text-[#0F172A]">합계</td>
+                    <td className="px-3 py-3 text-right tabular text-[#0F172A] text-lg">{result.items.reduce((a, i) => a + i.monthlyShares, 0).toLocaleString()}주</td>
+                    <td className="px-4 py-3 text-right tabular text-[#1A56DB]">
+                      <p>{fmtUSD(result.totalMonthlyInvestUSD)}</p>
+                      {usdkrw && <p className="text-xs font-normal">{fmtKRW(result.totalMonthlyInvestUSD * usdkrw)}</p>}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 연도별 배당 성장 테이블 */}
+          <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#E2E8F0] bg-slate-50 flex items-center justify-between">
+              <p className="text-sm font-semibold text-[#0F172A]">연도별 배당 성장 예측</p>
+              <p className="text-xs text-[#64748B]">목표 <span className="font-semibold text-[#0F172A]">{fmtKRW(targetKRW * 10000)}/월</span> (세후)</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-[#E2E8F0] text-xs">
+                    <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">연도</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-[#64748B]">연간배당 (세전)</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-[#64748B]">연간배당 (세후)</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-[#1A56DB]">월평균 (세후)</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-[#64748B]">YOC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((r, i) => {
+                    const isMilestone = r.year % 5 === 0
+                    const isGoalYear = r.year === years
+                    const monthlyKRW = usdkrw ? r.monthly * usdkrw : 0
+                    const isReached = usdkrw ? monthlyKRW >= targetKRW * 10000 : false
+                    return (
+                      <tr key={r.year} className={`border-b border-[#E2E8F0] last:border-0 ${isGoalYear ? 'bg-blue-50/70 font-semibold' : isMilestone ? 'bg-slate-50/70' : i % 2 ? 'bg-slate-50/30' : ''}`}>
+                        <td className="px-4 py-2.5 text-center">
+                          <span className={`text-xs font-medium ${isGoalYear ? 'text-[#1A56DB]' : 'text-[#64748B]'}`}>
+                            {r.year}년차{isReached && !isGoalYear && <span className="ml-1 text-emerald-600 text-[10px]">✓</span>}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular text-[#64748B]">
+                          <p>{fmtUSD(r.gross)}</p>
+                          {usdkrw && <p className="text-[10px]">{fmtKRW(r.gross * usdkrw)}</p>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular text-[#64748B]">
+                          <p>{fmtUSD(r.net)}</p>
+                          {usdkrw && <p className="text-[10px]">{fmtKRW(r.net * usdkrw)}</p>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular font-medium text-[#1A56DB]">
+                          <p>{fmtUSD(r.monthly)}</p>
+                          {usdkrw && (
+                            <p className={`text-[10px] ${isReached ? 'text-emerald-600 font-bold' : 'text-[#64748B]'}`}>
+                              {fmtKRW(monthlyKRW)}{isReached ? ' ✓' : ''}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular">
+                          <span className={`text-xs font-medium ${r.yoc >= 10 ? 'text-emerald-600' : r.yoc >= 5 ? 'text-blue-600' : 'text-[#64748B]'}`}>
+                            {r.yoc.toFixed(2)}%
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
+            * 주가·배당수익률은 현재 데이터 기준으로 고정 가정합니다. DGR {dgr}%는 가정치이며 실제 배당은 분기별 선언 기준으로 변동됩니다.
+            월 구매 주수는 목표 배당을 충족하도록 소수점 올림(ceil) 처리됩니다. ✓ 표시는 해당 연도에 월 목표를 최초 달성한 시점입니다.
+          </p>
+        </>
+      ) : (
+        <div className="bg-slate-50 border border-[#E2E8F0] rounded-xl p-8 text-center">
+          <p className="text-sm text-[#64748B]">종목을 선택하면 역산 결과가 표시됩니다.</p>
+          <p className="text-xs text-slate-400 mt-1">배당수익률 데이터가 없는 종목은 계산에서 제외됩니다.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── 메인 페이지 ─────────────────────────────────────────────────────────────
 
 function SimulationContent() {
   const searchParams = useSearchParams()
-  const [tab, setTab] = useState<'watchlist' | 'portfolio' | 'accum'>('watchlist')
+  const [tab, setTab] = useState<'watchlist' | 'portfolio' | 'accum' | 'goal'>('watchlist')
   const [taxConfig, setTaxConfig] = useState<TaxConfig | null>(null)
   const [selectedAccountId, setSelectedAccountId] = useState('general')
   const [customRate, setCustomRate] = useState(0)
@@ -662,6 +1035,7 @@ function SimulationContent() {
           { id: 'watchlist', label: '📋 감시 종목' },
           { id: 'portfolio', label: '💼 포트폴리오' },
           { id: 'accum', label: '📈 적립 시뮬레이션' },
+          { id: 'goal', label: '🎯 목표 역산' },
         ] as const).map(t => (
           <button
             key={t.id}
@@ -1409,6 +1783,16 @@ function SimulationContent() {
         </>
       )}
 
+
+      {/* ── 목표 역산 탭 ── */}
+      {tab === 'goal' && (
+        <GoalSimulator
+          stockData={stockData}
+          usdkrw={usdkrw}
+          taxRate={taxRate}
+          allTickers={mergedList.map(w => ({ ticker: w.ticker, name: w.name }))}
+        />
+      )}
 
       {/* 하단 면책 문구 */}
       <p className="text-[10px] text-slate-400 mt-6 leading-relaxed">
