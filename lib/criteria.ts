@@ -114,7 +114,7 @@ export const CRITERIA_CATALOG: CriteriaItem[] = [
     direction: "min",
     default: 2,
     min: 0.5, max: 10, step: 0.5,
-    enabled: false,
+    enabled: true,
     desc: "잉여현금흐름 ÷ 시가총액 — 배당의 실질 재원",
     detail: "회계 이익이 아닌 실제 현금을 기준으로 한 수익률입니다. FCF 수익률이 배당률보다 높아야 배당이 안전하게 지급됩니다. 회계 이익을 조작하기는 쉽지만 현금은 조작하기 어렵습니다.",
     goodSign: "현금 기반의 실질적인 배당 지급 능력 확인",
