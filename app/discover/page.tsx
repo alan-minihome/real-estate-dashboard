@@ -216,6 +216,7 @@ export default function DiscoverPage() {
   const kingCount      = universe.filter(u => u.tier === 'king' || u.tier === 'both').length
   const aristocratCount = universe.filter(u => u.tier === 'aristocrat' || u.tier === 'both').length
   const realBuyCount   = universe.filter(u => !u.inWatchlist && u.overall_pass === 1 && u.buy_signal === 1).length
+  const trapCount      = universe.filter(u => !u.inWatchlist && u.overall_pass === 0 && u.buy_signal === 1).length
 
   const selectableInView = filtered.filter(u => !u.inWatchlist)
   const allSelected = selectableInView.length > 0 && selectableInView.every(u => selected.has(u.ticker))
@@ -301,11 +302,19 @@ export default function DiscoverPage() {
                 <span className="px-3 py-1.5 bg-emerald-100 border-2 border-emerald-400 rounded-lg text-emerald-800 font-medium">
                   🎯 매수 후보 <span className="font-bold">{realBuyCount}</span>
                 </span>
+                {trapCount > 0 && (
+                  <>
+                    <span className="text-[#94A3B8]">·</span>
+                    <span className="px-3 py-1.5 bg-orange-50 border border-orange-300 rounded-lg text-orange-700">
+                      ⚠️ 함정 주의 <span className="font-bold">{trapCount}</span>
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* 3개 지표 상세 설명 */}
-            <div className="grid grid-cols-3 gap-3 text-xs">
+            {/* 4개 지표 상세 설명 */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="bg-white border border-blue-200 rounded-lg p-3">
                 <p className="font-semibold text-[#1A56DB] mb-1.5">✅ 기준 통과</p>
                 <p className="text-[#64748B] mb-2 leading-relaxed">
@@ -319,7 +328,7 @@ export default function DiscoverPage() {
                   <li>D/E ≤ 2</li>
                   <li>ROE ≥ 15%</li>
                   <li>EPS 성장 ≥ 5%</li>
-                  <li>FCF Yield ≥ 기준</li>
+                  <li>FCF 배당성향 ≤ 80%</li>
                 </ul>
                 <p className="text-[10px] text-[#94A3B8] mt-2">가격 무관 · 종목 품질만 본다</p>
               </div>
@@ -352,6 +361,23 @@ export default function DiscoverPage() {
                 </div>
                 <p className="text-[10px] text-emerald-700 mt-2 font-medium">
                   실행 가능한 진짜 매수 신호
+                </p>
+              </div>
+
+              <div className="bg-orange-50 border border-orange-300 rounded-lg p-3">
+                <p className="font-semibold text-orange-700 mb-1.5">⚠️ 함정 주의</p>
+                <p className="text-[#64748B] mb-2 leading-relaxed">
+                  &quot;<b>싸 보이지만 품질 미달</b>&quot;
+                </p>
+                <p className="text-[10px] text-[#94A3B8] mb-1">조건</p>
+                <div className="text-[11px] text-[#475569] bg-white rounded p-2 leading-relaxed">
+                  ❌ 기준 미통과<br/>
+                  <span className="text-orange-600">AND</span><br/>
+                  📉 가격 매력
+                </div>
+                <p className="text-[10px] text-orange-700 mt-2 leading-relaxed">
+                  배당률이 역사 평균보다 높다 = 주가가 눌려 있다는 뜻.
+                  이유가 실적 악화·배당 삭감 위험일 수 있으니 매수 전 반드시 원인 확인 필요.
                 </p>
               </div>
             </div>
