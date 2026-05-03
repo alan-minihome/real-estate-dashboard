@@ -35,7 +35,7 @@ interface CustomItem { ticker: string; name: string }
 // ─── 포맷 헬퍼 ──────────────────────────────────────────────────────────────
 
 const fmtKRW = (n: number) => `₩${Math.round(n).toLocaleString()}`
-const fmtUSD = (n: number) => `$${n.toFixed(2)}`
+const fmtUSD = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const fmtPct = (n: number) => `${n.toFixed(2)}%`
 
 // ─── 세금 설정 패널 ──────────────────────────────────────────────────────────
@@ -823,7 +823,12 @@ function SimulationContent() {
                           </td>
                           <td className="px-3 py-3 text-right tabular font-medium">{row.shares}</td>
                           <td className="px-3 py-3 text-right tabular text-[#64748B]">
-                            {row.annualGross > 0 ? fmtUSD(row.annualGross) : <span className="text-slate-300">–</span>}
+                            {row.annualGross > 0 ? (
+                              <div>
+                                <p>{fmtUSD(row.annualGross)}</p>
+                                {usdkrw && <p className="text-[10px]">{fmtKRW(row.annualGross * usdkrw)}</p>}
+                              </div>
+                            ) : <span className="text-slate-300">–</span>}
                           </td>
                           <td className="px-3 py-3 text-right tabular text-red-500 text-xs">
                             {row.taxAmount > 0 ? `-${fmtUSD(row.taxAmount)}` : <span className="text-slate-300">–</span>}
@@ -854,7 +859,10 @@ function SimulationContent() {
                       선택 합계
                       <span className="ml-1.5 text-xs font-normal text-[#64748B]">({selectedCount}종목)</span>
                     </td>
-                    <td className="px-3 py-3 text-right tabular text-[#64748B]">{fmtUSD(selectedTotals.gross)}</td>
+                    <td className="px-3 py-3 text-right tabular text-[#64748B]">
+                      <p>{fmtUSD(selectedTotals.gross)}</p>
+                      {usdkrw && <p className="text-xs font-normal">{fmtKRW(selectedTotals.gross * usdkrw)}</p>}
+                    </td>
                     <td className="px-3 py-3 text-right tabular text-red-500 text-xs">-{fmtUSD(selectedTotals.tax)}</td>
                     <td className="px-4 py-3 text-right tabular text-[#1A56DB]">
                       <p>{fmtUSD(selectedTotals.net)}</p>
@@ -938,7 +946,12 @@ function SimulationContent() {
                           <td className="px-3 py-3 text-right tabular">
                             {row.divYield ? fmtPct(row.divYield) : <span className="text-slate-300">–</span>}
                           </td>
-                          <td className="px-3 py-3 text-right tabular text-[#64748B]">{fmtUSD(row.annualGross)}</td>
+                          <td className="px-3 py-3 text-right tabular text-[#64748B]">
+                            <div>
+                              <p>{fmtUSD(row.annualGross)}</p>
+                              {usdkrw && <p className="text-[10px]">{fmtKRW(row.annualGross * usdkrw)}</p>}
+                            </div>
+                          </td>
                           <td className="px-3 py-3 text-right tabular text-red-500 text-xs">-{fmtUSD(row.taxAmount)}</td>
                           <td className="px-4 py-3 text-right tabular font-bold text-[#1A56DB]">
                             <p>{fmtUSD(row.annualNet)}</p>
@@ -952,7 +965,10 @@ function SimulationContent() {
                       ))}
                     <tr className="bg-blue-50/60 border-t-2 border-[#1A56DB] font-semibold text-sm">
                       <td colSpan={5} className="px-4 py-3 text-[#0F172A]">합계</td>
-                      <td className="px-3 py-3 text-right tabular text-[#64748B]">{fmtUSD(ptTotals.gross)}</td>
+                      <td className="px-3 py-3 text-right tabular text-[#64748B]">
+                        <p>{fmtUSD(ptTotals.gross)}</p>
+                        {usdkrw && <p className="text-xs font-normal">{fmtKRW(ptTotals.gross * usdkrw)}</p>}
+                      </td>
                       <td className="px-3 py-3 text-right tabular text-red-500 text-xs">-{fmtUSD(ptTotals.tax)}</td>
                       <td className="px-4 py-3 text-right tabular text-[#1A56DB]">
                         <p>{fmtUSD(ptTotals.net)}</p>
@@ -1295,7 +1311,10 @@ function SimulationContent() {
                               <td className="px-3 py-2.5 text-right tabular text-emerald-600 text-xs">+{Math.round(singleR.cumulativeDrip)}주</td>
                             )}
                             {singleR && <td className="px-3 py-2.5 text-right tabular text-[#64748B] text-xs">{fmtUSD(singleR.divPerShare)}</td>}
-                            <td className="px-3 py-2.5 text-right tabular text-[#64748B]">{fmtUSD(r.grossDividend)}</td>
+                            <td className="px-3 py-2.5 text-right tabular text-[#64748B]">
+                              <p>{fmtUSD(r.grossDividend)}</p>
+                              {usdkrw && <p className="text-[10px]">{fmtKRW(r.grossDividend * usdkrw)}</p>}
+                            </td>
                             <td className="px-3 py-2.5 text-right tabular text-red-500 text-xs">-{fmtUSD(taxAmt)}</td>
                             <td className="px-3 py-2.5 text-right tabular text-[#1A56DB] font-medium">
                               <p>{fmtUSD(r.netDividend)}</p>
@@ -1352,7 +1371,10 @@ function SimulationContent() {
                               <td className="px-4 py-2.5 font-bold text-[#1A56DB] text-xs">{s.ticker}</td>
                               <td className="px-3 py-2.5 text-[#0F172A] text-xs">{s.name}</td>
                               <td className="px-3 py-2.5 text-right tabular text-xs">{Math.round(s.shares).toLocaleString()}주</td>
-                              <td className="px-3 py-2.5 text-right tabular text-[#64748B] text-xs">{fmtUSD(s.gross)}</td>
+                              <td className="px-3 py-2.5 text-right tabular text-[#64748B] text-xs">
+                                <p>{fmtUSD(s.gross)}</p>
+                                {usdkrw && <p className="text-[10px]">{fmtKRW(s.gross * usdkrw)}</p>}
+                              </td>
                               <td className="px-3 py-2.5 text-right tabular font-medium text-[#1A56DB] text-xs">
                                 <p>{fmtUSD(s.net)}</p>
                                 {usdkrw && <p className="text-[10px] font-normal text-[#64748B]">{fmtKRW(s.net * usdkrw)}</p>}
