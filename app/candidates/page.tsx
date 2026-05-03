@@ -21,6 +21,13 @@ interface Candidate {
   signal_reason: string | null
 }
 
+interface IcrResult {
+  icr: number | null
+  ebit: number | null           // B$
+  interest_expense: number | null  // B$
+  error: string | null
+}
+
 export default function CandidatesPage() {
   const router = useRouter()
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -29,6 +36,8 @@ export default function CandidatesPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editShares, setEditShares] = useState<number>(10)
   const [editMemo, setEditMemo] = useState<string>('')
+  const [icrData, setIcrData] = useState<Record<string, IcrResult>>({})
+  const [icrLoading, setIcrLoading] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -36,7 +45,21 @@ export default function CandidatesPage() {
       fetch('/api/candidates').then(r => r.json()),
       fetch('/api/market').then(r => r.json()).catch(() => ({})),
     ])
-    if (Array.isArray(cr)) setCandidates(cr)
+    if (Array.isArray(cr)) {
+      setCandidates(cr)
+      // ICR은 watching 종목만 조회
+      const watchingTickers = (cr as Candidate[])
+        .filter(c => c.status === 'watching')
+        .map(c => c.ticker)
+      if (watchingTickers.length > 0) {
+        setIcrLoading(true)
+        fetch(`/api/icr?tickers=${watchingTickers.join(',')}`)
+          .then(r => r.json())
+          .then((d: Record<string, IcrResult>) => setIcrData(d))
+          .catch(() => {})
+          .finally(() => setIcrLoading(false))
+      }
+    }
     if (mr?.USDKRW?.price) setUsdkrw(mr.USDKRW.price)
     setLoading(false)
   }
@@ -80,6 +103,30 @@ export default function CandidatesPage() {
       .map(c => `${c.ticker}:${c.target_shares}`)
       .join(',')
     router.push(`/simulation?candidates=${encodeURIComponent(params)}`)
+  }
+
+  function renderIcr(ticker: string) {
+    if (icrLoading) return <span className="text-slate-300 text-xs">조회 중…</span>
+    const d = icrData[ticker]
+    if (!d) return <span className="text-slate-300">–</span>
+    if (d.icr === null) {
+      return <span className="text-slate-300 text-xs" title={d.error || '데이터 없음'}>–</span>
+    }
+    const v = d.icr
+    const [cls, label] = v >= 5
+      ? ['text-emerald-700 bg-emerald-50 border-emerald-200', '안전']
+      : v >= 3
+      ? ['text-amber-700 bg-amber-50 border-amber-200', '양호']
+      : ['text-red-700 bg-red-50 border-red-200', '위험']
+    const tip = `이자보상배율 ${v}x\nEBIT $${d.ebit}B ÷ 이자비용 $${d.interest_expense}B\n(≥5x 안전 · 3~5x 양호 · <3x 위험)`
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium ${cls}`}
+        title={tip}
+      >
+        {v}x <span className="text-[10px] opacity-70">{label}</span>
+      </span>
+    )
   }
 
   const watching = candidates.filter(c => c.status === 'watching')
@@ -181,6 +228,11 @@ export default function CandidatesPage() {
                 <th className="text-right px-4 py-2.5 font-medium text-[#64748B]">현재가</th>
                 <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">배당률</th>
                 <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">신호</th>
+                <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">
+                  <span title="이자보상배율(EBIT ÷ 이자비용) — 금리 인상기 배당 유지 체력 확인. ≥5x 안전 / 3~5x 양호 / &lt;3x 위험">
+                    ICR ⓘ
+                  </span>
+                </th>
                 <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">목표주수</th>
                 <th className="text-right px-4 py-2.5 font-medium text-[#64748B]">예상 연배당</th>
                 <th className="text-left px-4 py-2.5 font-medium text-[#64748B]">메모</th>
@@ -216,6 +268,9 @@ export default function CandidatesPage() {
                       {c.buy_signal
                         ? <span title={c.signal_reason || ''}>⚡</span>
                         : <span className="text-slate-300">–</span>}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {renderIcr(c.ticker)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       {isEditing ? (
@@ -292,6 +347,14 @@ export default function CandidatesPage() {
               })}
             </tbody>
           </table>
+          {/* ICR 범례 */}
+          <div className="px-4 py-2.5 border-t border-[#E2E8F0] bg-slate-50/60 flex items-center gap-4 text-[10px] text-[#94A3B8]">
+            <span className="font-medium text-[#64748B]">ICR (이자보상배율)</span>
+            <span className="text-emerald-600">● ≥5x 안전</span>
+            <span className="text-amber-600">● 3~5x 양호</span>
+            <span className="text-red-500">● &lt;3x 위험</span>
+            <span className="ml-auto">EBIT ÷ 이자비용 — 금리 인상기에도 이자를 갚으면서 배당을 유지할 체력</span>
+          </div>
         </div>
       )}
 
