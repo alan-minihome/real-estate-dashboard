@@ -39,6 +39,7 @@ function evaluateTicker(
       eps_growth_min: 'eps_growth',
       yield_vs_avg_min: '__yield_diff',
       fcf_yield_min: 'fcf_yield',
+      fcf_payout_ratio_max: 'fcf_payout_ratio',
       div_yield_min: 'div_yield',
     }
     const col = colMap[c.key]
