@@ -16,6 +16,7 @@ interface Candidate {
   price: number | null
   div_yield: number | null
   div_yield_5y: number | null
+  div_growth_5y: number | null
   overall_pass: number | null
   buy_signal: number | null
   signal_reason: string | null
@@ -69,6 +70,7 @@ export default function CandidatesPage() {
   const [earningsEvents, setEarningsEvents] = useState<EarningsEvent[]>([])
   const [earningsTab, setEarningsTab] = useState<'recent' | 'history'>('recent')
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null)
+  const [showTiming, setShowTiming] = useState(true)
 
   async function load() {
     setLoading(true)
@@ -284,6 +286,148 @@ export default function CandidatesPage() {
           </>
         )
       })()}
+
+      {/* 매수 타이밍 분석 */}
+      {watching.length > 0 && (
+        <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#E2E8F0] bg-slate-50 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-[#0F172A]">⏱ 매수 타이밍 분석</h2>
+              <p className="text-xs text-[#64748B] mt-0.5">배당률 vs 5년 평균 · YOC 복리 예측 · 최근 실적 요약</p>
+            </div>
+            <button
+              onClick={() => setShowTiming(t => !t)}
+              className="text-xs text-[#64748B] hover:text-slate-800 px-2 py-1"
+            >
+              {showTiming ? '접기 ▲' : '펼치기 ▼'}
+            </button>
+          </div>
+          {showTiming && (
+            <div className="grid grid-cols-2 gap-4 p-4">
+              {watching.map(c => {
+                const cur = c.div_yield
+                const avg = c.div_yield_5y
+                const dgr = c.div_growth_5y ?? 5
+                const diff = (cur != null && avg != null) ? cur - avg : null
+                const zone: 'buy' | 'neutral' | 'caution' | 'unknown' =
+                  diff == null ? 'unknown'
+                  : diff >= 0.3 ? 'buy'
+                  : diff >= -0.2 ? 'neutral'
+                  : 'caution'
+
+                const zoneConfig = {
+                  buy:     { label: '매수구간',   borderCls: 'border-emerald-300', bgCls: 'bg-emerald-50',  textCls: 'text-emerald-700', barCls: 'bg-emerald-400', dot: '🟢' },
+                  neutral: { label: '적정',        borderCls: 'border-slate-200',   bgCls: 'bg-slate-50',   textCls: 'text-slate-600',   barCls: 'bg-blue-300',    dot: '⚪' },
+                  caution: { label: '고평가주의',  borderCls: 'border-red-200',     bgCls: 'bg-red-50',     textCls: 'text-red-700',     barCls: 'bg-red-400',     dot: '🔴' },
+                  unknown: { label: '데이터 없음', borderCls: 'border-slate-200',   bgCls: 'bg-slate-50',   textCls: 'text-slate-400',   barCls: 'bg-slate-200',   dot: '–' },
+                }[zone]
+
+                // 배당률 게이지: avg를 50% 기준점으로 설정, cur가 얼마나 이탈했는지 표시
+                const barPct = (cur != null && avg != null && avg > 0)
+                  ? Math.min(95, Math.max(5, 50 + ((cur - avg) / avg) * 120))
+                  : 50
+
+                // YOC 복리 계산
+                const yoc = (years: number) => cur != null ? cur * Math.pow(1 + dgr / 100, years) : null
+
+                // 최근 실적
+                const evt = earningsEvents.find(e => e.ticker === c.ticker)
+
+                return (
+                  <div key={c.ticker} className={`rounded-xl border ${zoneConfig.borderCls} ${zoneConfig.bgCls} p-4`}>
+                    {/* 헤더 */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://finviz.com/quote.ashx?t=${c.ticker}`}
+                          target="_blank" rel="noopener"
+                          className="font-bold text-[#1A56DB] hover:underline"
+                        >{c.ticker}</a>
+                        <span className="text-xs text-[#64748B] truncate max-w-[120px]">{c.name}</span>
+                      </div>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full bg-white border ${zoneConfig.borderCls} ${zoneConfig.textCls}`}>
+                        {zoneConfig.dot} {zoneConfig.label}
+                      </span>
+                    </div>
+
+                    {/* 배당률 게이지 */}
+                    {cur != null ? (
+                      <div className="mb-3">
+                        <div className="flex justify-between text-xs text-[#64748B] mb-1">
+                          <span>현재 <strong className={zoneConfig.textCls}>{cur.toFixed(2)}%</strong></span>
+                          {avg != null && <span>5년 평균 {avg.toFixed(2)}%</span>}
+                        </div>
+                        <div className="relative h-3 bg-white rounded-full border border-slate-200 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${zoneConfig.barCls}`}
+                            style={{ width: `${barPct}%` }}
+                          />
+                          {/* 5년 평균 기준선 */}
+                          <div className="absolute inset-y-0 w-px bg-slate-500 opacity-60" style={{ left: '50%' }} />
+                        </div>
+                        {diff != null && (
+                          <p className={`text-[10px] mt-1 font-medium ${zoneConfig.textCls}`}>
+                            5년 평균 대비 {diff >= 0 ? '+' : ''}{diff.toFixed(2)}%p
+                            {zone === 'buy' && ' — 역사적 저평가, 매수 타이밍'}
+                            {zone === 'caution' && ' — 고평가 구간, 신규 진입 신중'}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-300 mb-3">배당률 데이터 없음</p>
+                    )}
+
+                    {/* YOC 복리 예측 */}
+                    {cur != null && (
+                      <div className="mb-3 p-2.5 bg-white/70 rounded-lg border border-slate-100">
+                        <p className="text-[10px] font-medium text-[#64748B] mb-1.5">
+                          📈 지금 매수 시 YOC 복리 예측 <span className="text-slate-400">(배당성장률 {dgr.toFixed(1)}%/yr 가정)</span>
+                        </p>
+                        <div className="grid grid-cols-4 gap-1 text-center">
+                          {([['현재', cur], ['5년', yoc(5)], ['10년', yoc(10)], ['20년', yoc(20)]] as [string, number | null][]).map(([label, val]) => (
+                            <div key={label} className="bg-slate-50 rounded p-1.5">
+                              <p className="text-[9px] text-[#94A3B8] mb-0.5">{label}</p>
+                              <p className={`text-xs font-bold tabular ${val != null && val >= 5 ? 'text-emerald-600' : val != null && val >= 3 ? 'text-blue-600' : 'text-[#0F172A]'}`}>
+                                {val != null ? val.toFixed(1) + '%' : '–'}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 최근 실적 */}
+                    {evt ? (
+                      <div className="text-xs border-t border-slate-200/80 pt-2.5">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <span className="text-[#94A3B8] text-[10px]">{evt.reported_date}</span>
+                          {evt.eps_surprise_pct != null && (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${evt.eps_surprise_pct > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                              EPS {evt.eps_surprise_pct > 0 ? '+' : ''}{evt.eps_surprise_pct.toFixed(1)}%
+                            </span>
+                          )}
+                          {evt.guidance_tone && (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              evt.guidance_tone === 'positive' ? 'bg-emerald-100 text-emerald-700'
+                              : evt.guidance_tone === 'negative' ? 'bg-red-100 text-red-700'
+                              : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              가이던스 {evt.guidance_tone === 'positive' ? '▲ 긍정' : evt.guidance_tone === 'negative' ? '▼ 부정' : '→ 중립'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[#475569] leading-relaxed text-[11px] line-clamp-2">{evt.summary}</p>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-slate-300 border-t border-slate-200/80 pt-2">실적 뉴스 없음</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 관심 종목 테이블 */}
       {watching.length === 0 ? (

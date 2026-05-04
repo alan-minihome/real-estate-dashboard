@@ -11,6 +11,8 @@ interface Screening {
   checks_json?: string | Record<string, number | null>
   eps_growth: number | null
   div_growth_5y: number | null
+  div_yield: number | null
+  div_yield_5y: number | null
 }
 
 interface StockPrice {
@@ -491,6 +493,12 @@ export default function ScreenerPage() {
               >
                 매수신호 ⓘ
               </th>
+              <th
+                className="text-center px-4 py-3 font-medium text-[#64748B] min-w-[110px] cursor-help"
+                title="현재 배당률 vs 5년 평균 배당률&#10;배당률↑ = 주가↓ = 저평가 신호&#10;🟢 매수구간: 현재 > 5년평균+0.3%p&#10;🔵 적정: 현재 ≈ 5년평균&#10;🔴 고평가: 현재 < 5년평균"
+              >
+                타이밍 ⓘ
+              </th>
               <th className="text-center px-4 py-3 font-medium text-[#64748B] min-w-[100px]">🎯 결과</th>
               <th className="text-center px-4 py-3 font-medium text-[#64748B]">후보 추가</th>
             </tr>
@@ -575,6 +583,43 @@ export default function ScreenerPage() {
                       {sc?.buy_signal
                         ? <span title={sc.signal_reason ?? undefined} className="cursor-help text-base">⚡</span>
                         : <span className="text-slate-200 text-xs">–</span>}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {(() => {
+                        // 스크리닝 데이터 우선, 없으면 stockPrices 폴백
+                        const cur = sc?.div_yield ?? stockPrices[w.ticker]?.div_yield
+                        const avg = sc?.div_yield_5y ?? null
+                        if (!cur) return <span className="text-slate-300 text-xs">–</span>
+                        if (!avg || avg === 0) {
+                          // 5년 평균 없음 → 현재 배당률만 표시
+                          return (
+                            <div className="text-xs">
+                              <span className="font-medium text-slate-600">{cur.toFixed(2)}%</span>
+                              <span className="text-slate-300 ml-0.5">/ –</span>
+                            </div>
+                          )
+                        }
+                        const diff = cur - avg
+                        const [bg, text, zone] = diff >= 0.3
+                          ? ['bg-emerald-50 border-emerald-200 text-emerald-700', 'text-emerald-600', '매수']
+                          : diff >= -0.2
+                          ? ['bg-slate-50 border-slate-200 text-slate-600', 'text-slate-500', '적정']
+                          : ['bg-red-50 border-red-200 text-red-700', 'text-red-500', '고평가']
+                        return (
+                          <div
+                            className={`inline-flex flex-col items-center px-2 py-1 rounded border text-[10px] ${bg} cursor-help`}
+                            title={`현재 배당률: ${cur.toFixed(2)}%\n5년 평균: ${avg.toFixed(2)}%\n차이: ${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%p`}
+                          >
+                            <span className="font-semibold">{zone}</span>
+                            <span className={`tabular ${text}`}>
+                              {cur.toFixed(2)}% / {avg.toFixed(2)}%
+                            </span>
+                            <span className={`font-bold ${text}`}>
+                              {diff >= 0 ? '+' : ''}{diff.toFixed(2)}%p
+                            </span>
+                          </div>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <VerdictBadge overallPass={sc?.overall_pass} buySignal={sc?.buy_signal} signalReason={sc?.signal_reason} size="sm" />

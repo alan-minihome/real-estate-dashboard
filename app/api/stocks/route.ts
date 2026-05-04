@@ -12,6 +12,8 @@ interface UniverseRow {
   criteria_json: string | null
   eps_growth: number | null
   div_growth_5y: number | null
+  div_yield: number | null
+  div_yield_5y: number | null
 }
 
 export function GET() {
@@ -59,6 +61,8 @@ export function GET() {
         pass_eps:        checks.eps_growth_min     ?? null,
         eps_growth:      u.eps_growth              ?? null,
         div_growth_5y:   u.div_growth_5y           ?? null,
+        div_yield:       u.div_yield               ?? null,
+        div_yield_5y:    u.div_yield_5y            ?? null,
       }
     })
 
