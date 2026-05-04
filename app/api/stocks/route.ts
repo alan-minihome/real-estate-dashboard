@@ -16,16 +16,65 @@ interface UniverseRow {
   div_yield_5y: number | null
 }
 
+interface StockRow {
+  ticker: string
+  fetched_at: string
+  price: number | null
+  market_cap: number | null
+  div_yield: number | null
+  div_yield_5y: number | null
+  div_amount: number | null
+  payout_ratio: number | null
+  div_growth_5y: number | null
+  peg: number | null
+  de_ratio: number | null
+  roe: number | null
+  eps_growth: number | null
+  fcf_yield: number | null
+  fcf_payout_ratio: number | null
+  sector: string | null
+}
+
+interface CustomWatchlistRow {
+  ticker: string
+  name: string | null
+  sector: string | null
+  tier: string | null
+  years: number | null
+  added_at: string
+  note: string | null
+}
+
 export function GET() {
   try {
     const db = getDb()
 
-    const stocks = db.prepare(`
+    const stockRows = db.prepare(`
       SELECT s.* FROM stock_data s
       INNER JOIN (
         SELECT ticker, MAX(fetched_at) AS max_at FROM stock_data GROUP BY ticker
       ) t ON s.ticker = t.ticker AND s.fetched_at = t.max_at
-    `).all()
+    `).all() as StockRow[]
+
+    // 직렬화 안전한 명시적 객체 반환 (raw SQLite Row 직접 노출 금지)
+    const stocks = stockRows.map(s => ({
+      ticker:           s.ticker,
+      fetched_at:       s.fetched_at,
+      price:            s.price           ?? null,
+      market_cap:       s.market_cap      ?? null,
+      div_yield:        s.div_yield       ?? null,
+      div_yield_5y:     s.div_yield_5y    ?? null,
+      div_amount:       s.div_amount      ?? null,
+      payout_ratio:     s.payout_ratio    ?? null,
+      div_growth_5y:    s.div_growth_5y   ?? null,
+      peg:              s.peg             ?? null,
+      de_ratio:         s.de_ratio        ?? null,
+      roe:              s.roe             ?? null,
+      eps_growth:       s.eps_growth      ?? null,
+      fcf_yield:        s.fcf_yield       ?? null,
+      fcf_payout_ratio: s.fcf_payout_ratio ?? null,
+      sector:           s.sector          ?? null,
+    }))
 
     // 단일 소스: universe_screening (S&P500 전체 스캔 결과)
     // screening_results 대신 universe_screening을 모든 페이지의 기준 데이터로 사용
@@ -72,14 +121,23 @@ export function GET() {
       }
     })
 
-    // 커스텀 감시 목록 (없으면 빈 배열)
-    let customWatchlist: unknown[] = []
+    // 커스텀 감시 목록 (없으면 빈 배열) — 직렬화 안전한 명시적 객체 반환
+    let customWatchlist: object[] = []
     try {
       const tableExists = db.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='custom_watchlist'"
       ).get()
       if (tableExists) {
-        customWatchlist = db.prepare('SELECT * FROM custom_watchlist ORDER BY added_at DESC').all()
+        const cwRows = db.prepare('SELECT * FROM custom_watchlist ORDER BY added_at DESC').all() as CustomWatchlistRow[]
+        customWatchlist = cwRows.map(r => ({
+          ticker:   r.ticker,
+          name:     r.name     ?? null,
+          sector:   r.sector   ?? null,
+          tier:     r.tier     ?? null,
+          years:    r.years    ?? null,
+          added_at: r.added_at,
+          note:     r.note     ?? null,
+        }))
       }
     } catch { /* 테이블 없으면 무시 */ }
 

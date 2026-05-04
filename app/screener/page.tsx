@@ -244,7 +244,7 @@ export default function ScreenerPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#0F172A]">종목 스크리너</h1>
-          <p className="text-sm text-[#64748B] mt-0.5">관심 종목 7기준 평가 + 임계값 튜닝 — 각 항목의 ▼를 눌러 기준 설명 확인</p>
+          <p className="text-sm text-[#64748B] mt-0.5">관심 종목 다중 기준 평가 + 임계값 튜닝 — 각 항목의 ▼를 눌러 기준 설명 확인</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowGuide(g => !g)}
@@ -284,7 +284,7 @@ export default function ScreenerPage() {
             {candidates.length > 0 && <span className="text-[#94A3B8]"> (후보함 {candidates.length})</span>}
             {customWatchlist.length > 0 && <span className="text-[#94A3B8]"> (감시 {customWatchlist.length})</span>}
           </span>
-          <span className="ml-2 text-[#94A3B8]">— 7기준 평가 + 임계값 슬라이더 조정 가능</span>
+          <span className="ml-2 text-[#94A3B8]">— 다중 기준 평가 + 임계값 슬라이더 조정 가능</span>
         </div>
         <a
           href="/discover"
