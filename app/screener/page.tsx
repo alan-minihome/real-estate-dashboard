@@ -18,6 +18,7 @@ interface Screening {
 interface StockPrice {
   ticker: string; price: number | null; div_yield: number | null
   eps_growth?: number | null; div_growth_5y?: number | null
+  payout_ratio?: number | null; fcf_payout_ratio?: number | null
 }
 
 interface HistoryEntry {
@@ -569,27 +570,37 @@ export default function ScreenerPage() {
                       {(() => {
                         const cur = sc?.div_yield ?? stockPrices[w.ticker]?.div_yield
                         const avg = sc?.div_yield_5y ?? null
+                        const payout    = stockPrices[w.ticker]?.payout_ratio ?? null
+                        const fcfPayout = stockPrices[w.ticker]?.fcf_payout_ratio ?? null
                         const hasBuySignal = !!sc?.buy_signal
                         if (!cur) return <span className="text-slate-300 text-xs">–</span>
                         if (!avg || avg === 0) {
-                          return (
-                            <span className="text-xs text-slate-400">
-                              {hasBuySignal && '⚡ '}{cur.toFixed(2)}%
-                            </span>
-                          )
+                          return <span className="text-xs text-slate-400">{hasBuySignal && '⚡ '}{cur.toFixed(2)}%</span>
                         }
                         const diff = cur - avg
-                        const [bg, textCls, dot] = diff >= 0.3
+                        // 매도검토: 고평가(-0.5%p 이하) + 재무부담(배당성향>80 OR FCF배당성향>85)
+                        const fundamentalStress =
+                          (payout !== null && payout > 80) || (fcfPayout !== null && fcfPayout > 85)
+                        const isSell = diff <= -0.5 && fundamentalStress
+
+                        const [bg, textCls, dot] = isSell
+                          ? ['bg-orange-50 border-orange-300', 'text-orange-700', '⛔']
+                          : diff >= 0.3
                           ? ['bg-emerald-50 border-emerald-200', 'text-emerald-700', '🟢']
                           : diff >= -0.2
                           ? ['bg-slate-50 border-slate-200', 'text-slate-500', '⚪']
                           : ['bg-red-50 border-red-200', 'text-red-600', '🔴']
+
+                        const tip = isSell
+                          ? `⛔ 매도검토\n현재 배당률: ${cur.toFixed(2)}% / 5년평균: ${avg.toFixed(2)}% (${diff.toFixed(2)}%p)\n배당성향: ${payout?.toFixed(1) ?? '–'}% / FCF배당성향: ${fcfPayout?.toFixed(1) ?? '–'}%`
+                          : `현재 배당률: ${cur.toFixed(2)}%\n5년 평균: ${avg.toFixed(2)}%\n차이: ${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%p`
+
                         return (
                           <div
                             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] ${bg} ${textCls} cursor-help whitespace-nowrap`}
-                            title={`현재 배당률: ${cur.toFixed(2)}%\n5년 평균: ${avg.toFixed(2)}%\n차이: ${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%p`}
+                            title={tip}
                           >
-                            <span>{dot}{hasBuySignal ? '⚡' : ''}</span>
+                            <span>{dot}{!isSell && hasBuySignal ? '⚡' : ''}</span>
                             <span className="font-semibold tabular">{diff >= 0 ? '+' : ''}{diff.toFixed(2)}%p</span>
                           </div>
                         )

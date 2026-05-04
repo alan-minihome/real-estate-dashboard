@@ -17,6 +17,8 @@ interface Candidate {
   div_yield: number | null
   div_yield_5y: number | null
   div_growth_5y: number | null
+  payout_ratio: number | null
+  fcf_payout_ratio: number | null
   overall_pass: number | null
   buy_signal: number | null
   signal_reason: string | null
@@ -308,14 +310,23 @@ export default function CandidatesPage() {
                 const cur = c.div_yield
                 const avg = c.div_yield_5y
                 const dgr = c.div_growth_5y ?? 5
+                const payout    = c.payout_ratio
+                const fcfPayout = c.fcf_payout_ratio
                 const diff = (cur != null && avg != null) ? cur - avg : null
-                const zone: 'buy' | 'neutral' | 'caution' | 'unknown' =
+
+                // 재무 부담 여부 (독립적으로 카드에 표시)
+                const fundamentalStress =
+                  (payout !== null && payout > 80) || (fcfPayout !== null && fcfPayout > 85)
+
+                const zone: 'sell' | 'buy' | 'neutral' | 'caution' | 'unknown' =
                   diff == null ? 'unknown'
+                  : diff <= -0.5 && fundamentalStress ? 'sell'
                   : diff >= 0.3 ? 'buy'
                   : diff >= -0.2 ? 'neutral'
                   : 'caution'
 
                 const zoneConfig = {
+                  sell:    { label: '매도검토',   borderCls: 'border-orange-300', bgCls: 'bg-orange-50',  textCls: 'text-orange-700', barCls: 'bg-orange-400', dot: '⛔' },
                   buy:     { label: '매수구간',   borderCls: 'border-emerald-300', bgCls: 'bg-emerald-50',  textCls: 'text-emerald-700', barCls: 'bg-emerald-400', dot: '🟢' },
                   neutral: { label: '적정',        borderCls: 'border-slate-200',   bgCls: 'bg-slate-50',   textCls: 'text-slate-600',   barCls: 'bg-blue-300',    dot: '⚪' },
                   caution: { label: '고평가주의',  borderCls: 'border-red-200',     bgCls: 'bg-red-50',     textCls: 'text-red-700',     barCls: 'bg-red-400',     dot: '🔴' },
@@ -395,6 +406,33 @@ export default function CandidatesPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* 재무 체력 — 배당성향 / FCF배당성향 */}
+                    <div className="mb-2 flex items-center gap-2 flex-wrap">
+                      {payout !== null && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                          payout > 80 ? 'bg-red-50 border-red-200 text-red-700'
+                          : payout > 65 ? 'bg-amber-50 border-amber-200 text-amber-700'
+                          : 'bg-slate-50 border-slate-200 text-slate-500'
+                        }`} title="배당성향 (EPS 기준) — 80% 초과 시 위험">
+                          배당성향 {payout.toFixed(1)}%
+                        </span>
+                      )}
+                      {fcfPayout !== null && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                          fcfPayout > 85 ? 'bg-red-50 border-red-200 text-red-700'
+                          : fcfPayout > 70 ? 'bg-amber-50 border-amber-200 text-amber-700'
+                          : 'bg-slate-50 border-slate-200 text-slate-500'
+                        }`} title="FCF 배당성향 — 85% 초과 시 실질 현금 부담">
+                          FCF {fcfPayout.toFixed(1)}%
+                        </span>
+                      )}
+                      {zone === 'sell' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded border bg-orange-100 border-orange-300 text-orange-800 font-semibold">
+                          ⛔ 고평가 + 재무부담 동시
+                        </span>
+                      )}
+                    </div>
 
                     {/* 최근 실적 */}
                     {evt ? (

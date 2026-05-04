@@ -53,6 +53,7 @@ export function GET() {
         overall_pass:    u.overall_pass,
         buy_signal:      u.buy_signal,
         signal_reason:   u.signal_reason,
+        checks_json:     checks,                   // 동적 기준 전달 (fcf_payout_ratio_max 등)
         pass_payout:     checks.payout_ratio_max   ?? null,
         pass_div_growth: checks.div_growth_5y_min  ?? null,
         pass_peg:        checks.peg_max            ?? null,
