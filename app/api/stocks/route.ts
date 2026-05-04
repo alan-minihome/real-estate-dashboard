@@ -47,23 +47,28 @@ export function GET() {
         } catch { /* ignore */ }
       }
       return {
-        ticker:          u.ticker,
-        name:            u.name ?? null,
-        screened_at:     u.screened_at,
-        overall_pass:    u.overall_pass,
-        buy_signal:      u.buy_signal,
-        signal_reason:   u.signal_reason,
-        checks_json:     checks,                   // 동적 기준 전달 (fcf_payout_ratio_max 등)
-        pass_payout:     checks.payout_ratio_max   ?? null,
-        pass_div_growth: checks.div_growth_5y_min  ?? null,
-        pass_peg:        checks.peg_max            ?? null,
-        pass_de:         checks.de_ratio_max       ?? null,
-        pass_roe:        checks.roe_min            ?? null,
-        pass_eps:        checks.eps_growth_min     ?? null,
-        eps_growth:      u.eps_growth              ?? null,
-        div_growth_5y:   u.div_growth_5y           ?? null,
-        div_yield:       u.div_yield               ?? null,
-        div_yield_5y:    u.div_yield_5y            ?? null,
+        ticker:           u.ticker,
+        name:             u.name ?? null,
+        screened_at:      u.screened_at,
+        overall_pass:     u.overall_pass,
+        buy_signal:       u.buy_signal,
+        signal_reason:    u.signal_reason,
+        // 기본 6개 기준 pass 컬럼
+        pass_payout:      checks.payout_ratio_max    ?? null,
+        pass_div_growth:  checks.div_growth_5y_min   ?? null,
+        pass_peg:         checks.peg_max             ?? null,
+        pass_de:          checks.de_ratio_max        ?? null,
+        pass_roe:         checks.roe_min             ?? null,
+        pass_eps:         checks.eps_growth_min      ?? null,
+        // FCF / 배당수익률 / 시총 기준 (동적 추가 기준)
+        pass_fcf_yield:   checks.fcf_yield_min        ?? null,
+        pass_fcf_payout:  checks.fcf_payout_ratio_max ?? null,
+        pass_div_yield:   checks.div_yield_min        ?? null,
+        pass_market_cap:  checks.market_cap_min       ?? null,
+        eps_growth:       u.eps_growth              ?? null,
+        div_growth_5y:    u.div_growth_5y           ?? null,
+        div_yield:        u.div_yield               ?? null,
+        div_yield_5y:     u.div_yield_5y            ?? null,
       }
     })
 

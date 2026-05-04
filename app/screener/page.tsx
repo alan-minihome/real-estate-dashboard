@@ -7,8 +7,10 @@ import VerdictBadge from '@/app/components/VerdictBadge'
 
 interface Screening {
   ticker: string; overall_pass: number; buy_signal: number; signal_reason: string|null
-  pass_payout: number; pass_div_growth: number; pass_peg: number; pass_de: number; pass_roe: number; pass_eps: number
-  checks_json?: string | Record<string, number | null>
+  pass_payout: number | null; pass_div_growth: number | null; pass_peg: number | null
+  pass_de: number | null; pass_roe: number | null; pass_eps: number | null
+  pass_fcf_yield: number | null; pass_fcf_payout: number | null
+  pass_div_yield: number | null; pass_market_cap: number | null
   eps_growth: number | null
   div_growth_5y: number | null
   div_yield: number | null
@@ -33,29 +35,24 @@ interface Snapshot {
 interface CustomItem { ticker: string; name: string; sector: string|null }
 
 const PASS_KEY_MAP: Record<string, string> = {
-  payout_ratio_max: 'pass_payout', div_growth_5y_min: 'pass_div_growth',
-  peg_max: 'pass_peg', de_ratio_max: 'pass_de', roe_min: 'pass_roe', eps_growth_min: 'pass_eps',
+  payout_ratio_max:     'pass_payout',
+  div_growth_5y_min:    'pass_div_growth',
+  peg_max:              'pass_peg',
+  de_ratio_max:         'pass_de',
+  roe_min:              'pass_roe',
+  eps_growth_min:       'pass_eps',
+  fcf_yield_min:        'pass_fcf_yield',
+  fcf_payout_ratio_max: 'pass_fcf_payout',
+  div_yield_min:        'pass_div_yield',
+  market_cap_min:       'pass_market_cap',
 }
 
 function getPass(sc: Screening | undefined, criteriaKey: string): number | null {
   if (!sc) return null
-  // 1. 레거시 컬럼 우선 (6개 기준)
-  const legacyKey = PASS_KEY_MAP[criteriaKey]
-  if (legacyKey) {
-    const val = (sc as unknown as Record<string, number>)[legacyKey]
-    if (val !== undefined && val !== null) return val
-  }
-  // 2. checks_json 파싱 (fcf_yield_min 등 동적 기준)
-  if (sc.checks_json) {
-    try {
-      const checks: Record<string, number | null> = typeof sc.checks_json === 'string'
-        ? JSON.parse(sc.checks_json)
-        : sc.checks_json
-      const val = checks[criteriaKey]
-      if (val !== undefined) return val
-    } catch { /* ignore */ }
-  }
-  return null
+  const fieldKey = PASS_KEY_MAP[criteriaKey]
+  if (!fieldKey) return null
+  const val = (sc as unknown as Record<string, number | null>)[fieldKey]
+  return val ?? null
 }
 
 function CriteriaCard({ c, value, active, onToggle, onChange }: {
