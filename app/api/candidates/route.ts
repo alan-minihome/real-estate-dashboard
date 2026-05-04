@@ -16,7 +16,7 @@ export function GET() {
       `SELECT
          c.*,
          s.div_yield, s.div_yield_5y, s.price,
-         s.payout_ratio, s.div_growth_5y, s.peg, s.de_ratio, s.roe, s.eps_growth, s.fcf_yield,
+         s.payout_ratio, s.fcf_payout_ratio, s.div_growth_5y, s.peg, s.de_ratio, s.roe, s.eps_growth, s.fcf_yield,
          s.market_cap, s.sector,
          COALESCE(sc.overall_pass,  us.overall_pass)  AS overall_pass,
          COALESCE(sc.buy_signal,    us.buy_signal)    AS buy_signal,
@@ -26,7 +26,7 @@ export function GET() {
        FROM candidates c
        LEFT JOIN (
          SELECT s.ticker, s.div_yield, s.div_yield_5y, s.price,
-                s.payout_ratio, s.div_growth_5y, s.peg, s.de_ratio, s.roe, s.eps_growth, s.fcf_yield,
+                s.payout_ratio, s.fcf_payout_ratio, s.div_growth_5y, s.peg, s.de_ratio, s.roe, s.eps_growth, s.fcf_yield,
                 s.market_cap, s.sector
          FROM stock_data s
          INNER JOIN (
@@ -55,16 +55,39 @@ export function GET() {
     // legacy pass_* 우선, 없으면 universe_screening의 checks_json에서 폴백
     const result = rows.map(r => {
       const checks = r.us_checks_json ? safeParse(r.us_checks_json) : {}
+      // 직렬화 안전한 명시적 객체 반환 (spread 미사용 — checks_json 등 오염 방지)
       return {
-        ...r,
-        checks_json: checks,
-        pass_payout:     r.pass_payout     ?? checks.payout_ratio_max ?? null,
-        pass_div_growth: r.pass_div_growth ?? checks.div_growth_5y_min ?? null,
-        pass_peg:        r.pass_peg        ?? checks.peg_max ?? null,
-        pass_de:         r.pass_de         ?? checks.de_ratio_max ?? null,
-        pass_roe:        r.pass_roe        ?? checks.roe_min ?? null,
-        pass_eps:        r.pass_eps        ?? checks.eps_growth_min ?? null,
-        us_checks_json: undefined,
+        id:              r.id,
+        ticker:          r.ticker,
+        name:            r.name,
+        added_at:        r.added_at,
+        target_shares:   r.target_shares,
+        memo:            r.memo,
+        status:          r.status,
+        div_yield:       r.div_yield       ?? null,
+        div_yield_5y:    r.div_yield_5y    ?? null,
+        price:           r.price           ?? null,
+        payout_ratio:    r.payout_ratio    ?? null,
+        fcf_payout_ratio: r.fcf_payout_ratio ?? null,
+        div_growth_5y:   r.div_growth_5y   ?? null,
+        peg:             r.peg             ?? null,
+        de_ratio:        r.de_ratio        ?? null,
+        roe:             r.roe             ?? null,
+        eps_growth:      r.eps_growth      ?? null,
+        fcf_yield:       r.fcf_yield       ?? null,
+        market_cap:      r.market_cap      ?? null,
+        sector:          r.sector          ?? null,
+        overall_pass:    r.overall_pass    ?? null,
+        buy_signal:      r.buy_signal      ?? null,
+        signal_reason:   r.signal_reason   ?? null,
+        pass_payout:     (r.pass_payout     ?? checks.payout_ratio_max    ?? null) as number | null,
+        pass_div_growth: (r.pass_div_growth ?? checks.div_growth_5y_min   ?? null) as number | null,
+        pass_peg:        (r.pass_peg        ?? checks.peg_max             ?? null) as number | null,
+        pass_de:         (r.pass_de         ?? checks.de_ratio_max        ?? null) as number | null,
+        pass_roe:        (r.pass_roe        ?? checks.roe_min             ?? null) as number | null,
+        pass_eps:        (r.pass_eps        ?? checks.eps_growth_min      ?? null) as number | null,
+        pass_fcf_payout: checks.fcf_payout_ratio_max ?? null,
+        pass_fcf_yield:  checks.fcf_yield_min        ?? null,
       }
     })
     return NextResponse.json(result)
