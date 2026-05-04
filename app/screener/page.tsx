@@ -484,23 +484,16 @@ export default function ScreenerPage() {
               <th className="text-right px-3 py-3 font-medium text-[#64748B] text-xs">EPS 성장</th>
               <th className="text-right px-3 py-3 font-medium text-[#64748B] text-xs">배당 성장</th>
               {activeCriteria.map(c => (
-                <th key={c.key} className="text-center px-3 py-3 font-medium text-[#64748B] text-xs">{c.label}</th>
+                <th key={c.key} className="text-center px-2 py-3 font-medium text-[#64748B] text-xs min-w-[48px]">{c.label}</th>
               ))}
-              <th className="text-center px-4 py-3 font-medium text-[#64748B]">통과</th>
               <th
-                className="text-center px-4 py-3 font-medium text-[#64748B] cursor-help"
-                title={`매수신호 = 현재 배당률 > 5년 평균 배당률 + ${(criteria['yield_vs_avg_min'] ?? 1.0).toFixed(1)}%p\n주가가 역사적 저평가 구간에 진입했다는 신호`}
-              >
-                매수신호 ⓘ
-              </th>
-              <th
-                className="text-center px-4 py-3 font-medium text-[#64748B] min-w-[110px] cursor-help"
-                title="현재 배당률 vs 5년 평균 배당률&#10;배당률↑ = 주가↓ = 저평가 신호&#10;🟢 매수구간: 현재 > 5년평균+0.3%p&#10;🔵 적정: 현재 ≈ 5년평균&#10;🔴 고평가: 현재 < 5년평균"
+                className="text-center px-3 py-3 font-medium text-[#64748B] min-w-[96px] cursor-help"
+                title="현재 배당률 vs 5년 평균&#10;🟢 매수구간: +0.3%p 이상&#10;⚪ 적정: ±0.2%p&#10;🔴 고평가: -0.2%p 이하&#10;⚡ = 매수신호 발생"
               >
                 타이밍 ⓘ
               </th>
-              <th className="text-center px-4 py-3 font-medium text-[#64748B] min-w-[100px]">🎯 결과</th>
-              <th className="text-center px-4 py-3 font-medium text-[#64748B]">후보 추가</th>
+              <th className="text-center px-3 py-3 font-medium text-[#64748B] min-w-[88px]">🎯 결과</th>
+              <th className="text-center px-3 py-3 font-medium text-[#64748B]">후보</th>
             </tr>
           </thead>
           <tbody>
@@ -561,7 +554,7 @@ export default function ScreenerPage() {
                         ? (sc ? (sc.buy_signal ? 1 : 0) : null)
                         : getPass(sc, c.key)
                       return (
-                        <td key={c.key} className="px-3 py-3 text-center">
+                        <td key={c.key} className="px-2 py-3 text-center">
                           {!sc
                             ? <span className="text-slate-300">–</span>
                             : pass === -1
@@ -572,66 +565,47 @@ export default function ScreenerPage() {
                         </td>
                       )
                     })}
-                    <td className="px-4 py-3 text-center font-medium">
-                      {sc
-                        ? sc.overall_pass
-                          ? '✅'
-                          : <span className="text-red-500 text-xs">❌ {passCount}/{activeCriteria.length - naCount}</span>
-                        : <span className="text-slate-300">–</span>}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {sc?.buy_signal
-                        ? <span title={sc.signal_reason ?? undefined} className="cursor-help text-base">⚡</span>
-                        : <span className="text-slate-200 text-xs">–</span>}
-                    </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-3 text-center">
                       {(() => {
-                        // 스크리닝 데이터 우선, 없으면 stockPrices 폴백
                         const cur = sc?.div_yield ?? stockPrices[w.ticker]?.div_yield
                         const avg = sc?.div_yield_5y ?? null
+                        const hasBuySignal = !!sc?.buy_signal
                         if (!cur) return <span className="text-slate-300 text-xs">–</span>
                         if (!avg || avg === 0) {
-                          // 5년 평균 없음 → 현재 배당률만 표시
                           return (
-                            <div className="text-xs">
-                              <span className="font-medium text-slate-600">{cur.toFixed(2)}%</span>
-                              <span className="text-slate-300 ml-0.5">/ –</span>
-                            </div>
+                            <span className="text-xs text-slate-400">
+                              {hasBuySignal && '⚡ '}{cur.toFixed(2)}%
+                            </span>
                           )
                         }
                         const diff = cur - avg
-                        const [bg, text, zone] = diff >= 0.3
-                          ? ['bg-emerald-50 border-emerald-200 text-emerald-700', 'text-emerald-600', '매수']
+                        const [bg, textCls, dot] = diff >= 0.3
+                          ? ['bg-emerald-50 border-emerald-200', 'text-emerald-700', '🟢']
                           : diff >= -0.2
-                          ? ['bg-slate-50 border-slate-200 text-slate-600', 'text-slate-500', '적정']
-                          : ['bg-red-50 border-red-200 text-red-700', 'text-red-500', '고평가']
+                          ? ['bg-slate-50 border-slate-200', 'text-slate-500', '⚪']
+                          : ['bg-red-50 border-red-200', 'text-red-600', '🔴']
                         return (
                           <div
-                            className={`inline-flex flex-col items-center px-2 py-1 rounded border text-[10px] ${bg} cursor-help`}
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] ${bg} ${textCls} cursor-help whitespace-nowrap`}
                             title={`현재 배당률: ${cur.toFixed(2)}%\n5년 평균: ${avg.toFixed(2)}%\n차이: ${diff >= 0 ? '+' : ''}${diff.toFixed(2)}%p`}
                           >
-                            <span className="font-semibold">{zone}</span>
-                            <span className={`tabular ${text}`}>
-                              {cur.toFixed(2)}% / {avg.toFixed(2)}%
-                            </span>
-                            <span className={`font-bold ${text}`}>
-                              {diff >= 0 ? '+' : ''}{diff.toFixed(2)}%p
-                            </span>
+                            <span>{dot}{hasBuySignal ? '⚡' : ''}</span>
+                            <span className="font-semibold tabular">{diff >= 0 ? '+' : ''}{diff.toFixed(2)}%p</span>
                           </div>
                         )
                       })()}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-3 text-center">
                       <VerdictBadge overallPass={sc?.overall_pass} buySignal={sc?.buy_signal} signalReason={sc?.signal_reason} size="sm" />
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-3 text-center">
                       {candidateAdded.has(w.ticker) ? (
-                        <span className="text-emerald-600 text-xs font-medium">✓ 추가됨</span>
+                        <span className="text-emerald-600 text-xs">✓</span>
                       ) : (
                         <button
                           onClick={() => addToCandidate(w.ticker, w.name)}
-                          className="text-xs px-2 py-1 border border-[#1A56DB] text-[#1A56DB] rounded hover:bg-blue-50 whitespace-nowrap"
-                        >+ 후보</button>
+                          className="text-xs px-2 py-0.5 border border-[#1A56DB] text-[#1A56DB] rounded hover:bg-blue-50"
+                        >+</button>
                       )}
                     </td>
                   </tr>
