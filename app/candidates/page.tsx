@@ -318,8 +318,11 @@ export default function CandidatesPage() {
                 const fundamentalStress =
                   (payout !== null && payout > 80) || (fcfPayout !== null && fcfPayout > 85)
 
+                // 배당 이력 5년 미만(신규 배당 종목)이면 5년 평균이 왜곡됨 → 타이밍 판단 불가
+                const unreliableHistory = c.div_growth_5y == null && cur != null && cur > 0
+
                 const zone: 'sell' | 'buy' | 'neutral' | 'caution' | 'unknown' =
-                  diff == null ? 'unknown'
+                  diff == null || unreliableHistory ? 'unknown'
                   : diff <= -0.5 && fundamentalStress ? 'sell'
                   : diff >= 0.3 ? 'buy'
                   : diff >= -0.2 ? 'neutral'
