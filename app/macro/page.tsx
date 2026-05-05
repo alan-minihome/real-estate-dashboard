@@ -21,6 +21,18 @@ const MARKET_META: { key: keyof MarketData; label: string; unit: string; desc: s
   { key: 'TNX',    label: '미 10년 국채', unit: '%', desc: '장기금리 기준' },
 ]
 
+// 미니 차트 불렛 위 숫자 포매터 — 공간에 맞게 축약
+function fmtDotLabel(value: number, unit: string): string {
+  if (unit === '%') return value.toFixed(2)           // TNX: 4.45
+  if (unit === '₩') {
+    // USDKRW: 1472.95 → 1,473
+    return value.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  }
+  if (value >= 10000) return `${(value / 1000).toFixed(1)}K`  // 27651 → 27.7K
+  if (value >= 1000)  return `${(value / 1000).toFixed(2)}K`  // 6858 → 6.86K
+  return value.toFixed(2)                                      // VIX: 17.83
+}
+
 function MarketCard({ meta, data, history }: {
   meta: typeof MARKET_META[0]
   data: MarketItem|null|undefined
@@ -70,11 +82,11 @@ function MarketCard({ meta, data, history }: {
         {up ? '+' : ''}{data.change.toLocaleString('en-US', { maximumFractionDigits: 2 })}
       </p>
 
-      {/* 6개월 미니 차트 */}
+      {/* 6개월 미니 차트 — 불렛 위 숫자 표시 */}
       {monthlyHistory.length > 1 && (
         <div className="mt-3 -mx-1">
-          <ResponsiveContainer width="100%" height={64}>
-            <LineChart data={monthlyHistory} margin={{ top: 4, right: 2, bottom: 16, left: 2 }}>
+          <ResponsiveContainer width="100%" height={80}>
+            <LineChart data={monthlyHistory} margin={{ top: 18, right: 4, bottom: 16, left: 4 }}>
               <YAxis domain={['auto', 'auto']} hide />
               <XAxis
                 dataKey="date"
@@ -84,14 +96,38 @@ function MarketCard({ meta, data, history }: {
                 axisLine={false}
                 tickLine={false}
               />
-              <Line type="monotone" dataKey="close" stroke={chartColor} dot={{ r: 2.5, fill: chartColor, strokeWidth: 0 }} strokeWidth={1.5} />
+              <Line
+                type="monotone"
+                dataKey="close"
+                stroke={chartColor}
+                dot={{ r: 2.5, fill: chartColor, strokeWidth: 0 }}
+                strokeWidth={1.5}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                label={(props: any) => {
+                  const x = Number(props.x ?? 0)
+                  const y = Number(props.y ?? 0)
+                  const val = props.value as number | undefined
+                  if (val === undefined) return <text />
+                  return (
+                    <text
+                      x={x} y={y - 7}
+                      fill="#64748B"
+                      fontSize={8}
+                      textAnchor="middle"
+                      fontWeight={500}
+                    >
+                      {fmtDotLabel(val, meta.unit)}
+                    </text>
+                  )
+                }}
+              />
               <Tooltip
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
                   const d = payload[0].payload as HistoryPoint
                   return (
                     <div className="bg-white border border-[#E2E8F0] rounded px-2 py-1 text-[10px] shadow-sm">
-                      <p className="text-slate-400">{d.date}</p>
+                      <p className="text-slate-400">{d.date.slice(0, 7)}</p>
                       <p className="font-bold">{meta.unit}{d.close.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p>
                     </div>
                   )

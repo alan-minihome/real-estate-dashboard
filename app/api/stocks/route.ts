@@ -33,6 +33,15 @@ interface StockRow {
   fcf_yield: number | null
   fcf_payout_ratio: number | null
   sector: string | null
+  // Phase 1: 미래 성장성
+  forward_eps: number | null
+  forward_pe: number | null
+  eps_growth_fwd: number | null
+  revenue_growth: number | null
+  analyst_rating: number | null
+  // Phase 2: 리스크 필터
+  debt_trend: string | null
+  eps_revision_score: number | null
 }
 
 interface CustomWatchlistRow {
@@ -74,6 +83,13 @@ export function GET() {
       fcf_yield:        s.fcf_yield       ?? null,
       fcf_payout_ratio: s.fcf_payout_ratio ?? null,
       sector:           s.sector          ?? null,
+      forward_eps:      s.forward_eps     ?? null,
+      forward_pe:       s.forward_pe      ?? null,
+      eps_growth_fwd:   s.eps_growth_fwd  ?? null,
+      revenue_growth:   s.revenue_growth  ?? null,
+      analyst_rating:   s.analyst_rating  ?? null,
+      debt_trend:           s.debt_trend           ?? null,
+      eps_revision_score:   s.eps_revision_score   ?? null,
     }))
 
     // 단일 소스: universe_screening (S&P500 전체 스캔 결과)

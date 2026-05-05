@@ -6,11 +6,49 @@ import VerdictBadge from './components/VerdictBadge'
 import { WATCHLIST } from '@/lib/watchlist'
 import { AUTHOR_PORTFOLIO, PORTFOLIO_TEMPLATE, SUPER_INVESTOR_COMMON } from '@/lib/author-picks'
 
-interface Stock { ticker: string; price: number|null; div_yield: number|null; div_yield_5y: number|null; fetched_at: string }
+interface Stock {
+  ticker: string; price: number|null; div_yield: number|null; div_yield_5y: number|null; fetched_at: string
+  forward_eps: number|null; forward_pe: number|null; eps_growth_fwd: number|null
+  revenue_growth: number|null; analyst_rating: number|null
+  debt_trend: string|null; eps_revision_score: number|null
+}
 interface Screening { ticker: string; overall_pass: number; buy_signal: number; signal_reason: string|null }
 interface CustomItem { ticker: string; name: string; sector: string|null; tier: string|null; years: number|null; note: string|null }
 interface CandidateRow { ticker: string; name: string; status: string }
 interface MacroSummary { dgs10: number|null; dgs10_5y_avg: number|null; dgs10_updated_at: string|null }
+
+function analystLabel(rating: number | null): { emoji: string; label: string; color: string } {
+  if (rating === null) return { emoji: '–', label: '–', color: 'text-slate-400' }
+  if (rating <= 1.5) return { emoji: '🟢', label: '강력매수', color: 'text-emerald-600' }
+  if (rating <= 2.5) return { emoji: '🟢', label: '매수', color: 'text-emerald-500' }
+  if (rating <= 3.5) return { emoji: '🟡', label: '보유', color: 'text-amber-500' }
+  if (rating <= 4.5) return { emoji: '🔴', label: '매도', color: 'text-red-500' }
+  return { emoji: '🔴', label: '강력매도', color: 'text-red-700' }
+}
+
+function riskBadge(debtTrend: string | null, revisionScore: number | null): { level: 'warn' | 'caution' | 'ok' | 'na'; text: string; title: string } {
+  const debtUp   = debtTrend === 'up'
+  const debtDown = debtTrend === 'down'
+  const revDown  = revisionScore !== null && revisionScore < -2
+  const revUp    = revisionScore !== null && revisionScore > 2
+
+  if (debtTrend === null && revisionScore === null) return { level: 'na', text: '–', title: '데이터 없음' }
+
+  const debtLabel = debtTrend === 'up' ? '부채↑' : debtTrend === 'down' ? '부채↓' : '부채→'
+  const revLabel  = revisionScore === null ? '' : revisionScore > 0 ? `전망↑${revisionScore}` : revisionScore < 0 ? `전망↓${Math.abs(revisionScore)}` : '전망→'
+
+  if (debtUp && revDown) return { level: 'warn',    text: '⚠️', title: `위험: ${debtLabel} · ${revLabel} (애널리스트 하향조정 ${Math.abs(revisionScore!)}건)` }
+  if (debtUp || revDown) return { level: 'caution', text: '⚡', title: `주의: ${debtLabel}${revLabel ? ' · ' + revLabel : ''}` }
+  if (debtDown || revUp) return { level: 'ok',      text: '✅', title: `양호: ${debtLabel}${revLabel ? ' · ' + revLabel : ''}` }
+  return { level: 'ok', text: '✅', title: `안정: ${debtLabel}${revLabel ? ' · ' + revLabel : ''}` }
+}
+
+function growthColor(pct: number | null): string {
+  if (pct === null) return 'text-slate-400'
+  if (pct >= 10) return 'text-emerald-600 font-medium'
+  if (pct >= 0)  return 'text-slate-600'
+  return 'text-red-500'
+}
 
 function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso + 'Z').getTime()
@@ -226,6 +264,9 @@ export default function HomePage() {
                 <th className="text-right px-4 py-3 font-medium text-[#64748B]">주가</th>
                 <th className="text-right px-4 py-3 font-medium text-[#64748B]">배당률</th>
                 <th className="text-right px-4 py-3 font-medium text-[#64748B]">5년 평균</th>
+                <th className="text-right px-4 py-3 font-medium text-[#64748B]" title="애널리스트 컨센서스 기반 Forward EPS 성장률">EPS↑예상</th>
+                <th className="text-center px-4 py-3 font-medium text-[#64748B]" title="애널리스트 투자의견 평균 (1=강력매수 ~ 5=강력매도)">의견</th>
+                <th className="text-center px-4 py-3 font-medium text-[#64748B]" title="부채 증가 추세 + EPS 리비전">리스크</th>
                 <th className="text-center px-4 py-3 font-medium text-[#64748B]">기준통과</th>
                 <th className="text-center px-4 py-3 font-medium text-[#64748B]">매수신호</th>
                 <th className="text-center px-4 py-3 font-medium text-[#64748B] min-w-[100px]">🎯 결과</th>
@@ -258,6 +299,21 @@ export default function HomePage() {
                     </td>
                     <td className="px-4 py-3 text-right tabular">{s?.div_yield ? `${s.div_yield.toFixed(2)}%` : '–'}</td>
                     <td className="px-4 py-3 text-right tabular text-[#64748B]">{s?.div_yield_5y ? `${s.div_yield_5y.toFixed(2)}%` : '–'}</td>
+                    <td className={`px-4 py-3 text-right tabular text-xs ${growthColor(s?.eps_growth_fwd ?? null)}`}>
+                      {s?.eps_growth_fwd != null ? `${s.eps_growth_fwd > 0 ? '+' : ''}${s.eps_growth_fwd.toFixed(1)}%` : '–'}
+                    </td>
+                    <td className="px-4 py-3 text-center text-xs" title={s?.analyst_rating != null ? `${s.analyst_rating.toFixed(1)} / 5.0` : ''}>
+                      {(() => { const a = analystLabel(s?.analyst_rating ?? null); return a.emoji === '–' ? <span className="text-slate-400">–</span> : <span className={a.color}>{a.emoji} {a.label}</span> })()}
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm" title={riskBadge(s?.debt_trend ?? null, s?.eps_revision_score ?? null).title}>
+                      {(() => {
+                        const r = riskBadge(s?.debt_trend ?? null, s?.eps_revision_score ?? null)
+                        if (r.level === 'na') return <span className="text-slate-300">–</span>
+                        if (r.level === 'warn')    return <span>{r.text}</span>
+                        if (r.level === 'caution') return <span className="text-amber-500">{r.text}</span>
+                        return <span className="text-emerald-500">{r.text}</span>
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-center">{sc ? (sc.overall_pass ? '✅' : '❌') : '–'}</td>
                     <td className="px-4 py-3 text-center">{sc?.buy_signal ? '⚡' : ''}</td>
                     <td className="px-4 py-3 text-center">
