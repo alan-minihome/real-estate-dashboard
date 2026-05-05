@@ -31,6 +31,7 @@ interface MacroSignal {
 interface MacroSummary {
   risk_score: number; risk_level: 'low' | 'moderate' | 'high'
   signals: MacroSignal[]; recommendation: string; updated_at: string | null
+  dgs10: number | null; dgs10_5y_avg: number | null
 }
 interface MarketData { USDKRW?: { price: number } | null }
 
@@ -95,7 +96,23 @@ function MacroBanner({ macro }: { macro: MacroSummary | null }) {
           </div>
         ))}
       </div>
-      <p className={`text-xs font-medium ${cfg.text}`}>💡 {macro.recommendation}</p>
+      <div className="flex items-start justify-between">
+        <p className={`text-xs font-medium ${cfg.text}`}>💡 {macro.recommendation}</p>
+        {/* DGS10 ERP 컨텍스트 */}
+        {macro.dgs10 !== null && (
+          <div className="flex items-center gap-2 text-[10px] text-slate-500 bg-white/60 rounded-md px-2.5 py-1.5 shrink-0 ml-4">
+            <span className="font-medium text-slate-700">🏦 국채10Y {macro.dgs10.toFixed(2)}%</span>
+            {macro.dgs10_5y_avg !== null && (
+              <>
+                <span className="text-slate-300">|</span>
+                <span>5년평균 {macro.dgs10_5y_avg.toFixed(2)}%</span>
+                <span className="text-slate-300">|</span>
+                <span>프리미엄 {(macro.dgs10 - macro.dgs10_5y_avg > 0 ? '+' : '')}{(macro.dgs10 - macro.dgs10_5y_avg).toFixed(2)}%p</span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

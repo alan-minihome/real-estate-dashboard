@@ -23,6 +23,15 @@ export function GET() {
       "SELECT * FROM macro_data WHERE indicator = 'RSAFS' ORDER BY recorded_at DESC LIMIT 5"
     ).all() as MacroRow[]
 
+    // DGS10: 최신 60개월 (5년) — 매수신호 ERP 계산용
+    const dgs10Rows = db.prepare(
+      "SELECT * FROM macro_data WHERE indicator = 'DGS10' ORDER BY recorded_at DESC LIMIT 60"
+    ).all() as MacroRow[]
+    const dgs10Latest = dgs10Rows.length > 0 ? dgs10Rows[0].value : null
+    const dgs10_5y_avg = dgs10Rows.length > 0
+      ? dgs10Rows.reduce((s, r) => s + r.value, 0) / dgs10Rows.length
+      : null
+
     const signals: { id: string; label: string; status: 'ok' | 'warning' | 'danger'; value: string; detail: string }[] = []
     let riskScore = 0
 
@@ -98,6 +107,10 @@ export function GET() {
       signals,
       recommendation: recommendations[riskLevel],
       updated_at: t10y2y[0]?.recorded_at ?? null,
+      // DGS10 — 매수신호 ERP 계산용 (null이면 DGS10 미수집)
+      dgs10: dgs10Latest,
+      dgs10_5y_avg: dgs10_5y_avg !== null ? Math.round(dgs10_5y_avg * 100) / 100 : null,
+      dgs10_updated_at: dgs10Rows[0]?.recorded_at ?? null,
     })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })

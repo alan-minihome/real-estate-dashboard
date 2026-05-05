@@ -10,6 +10,7 @@ interface Stock { ticker: string; price: number|null; div_yield: number|null; di
 interface Screening { ticker: string; overall_pass: number; buy_signal: number; signal_reason: string|null }
 interface CustomItem { ticker: string; name: string; sector: string|null; tier: string|null; years: number|null; note: string|null }
 interface CandidateRow { ticker: string; name: string; status: string }
+interface MacroSummary { dgs10: number|null; dgs10_5y_avg: number|null; dgs10_updated_at: string|null }
 
 function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso + 'Z').getTime()
@@ -28,19 +29,26 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [usdkrw, setUsdkrw] = useState<number|null>(null)
+  const [macro, setMacro] = useState<MacroSummary>({ dgs10: null, dgs10_5y_avg: null, dgs10_updated_at: null })
 
   useEffect(() => {
     Promise.all([
       fetch('/api/stocks').then(r => r.json()),
       fetch('/api/market').then(r => r.json()).catch(() => null),
       fetch('/api/candidates').then(r => r.json()).catch(() => []),
-    ]).then(([d, marketData, candidatesData]) => {
+      fetch('/api/macro/summary').then(r => r.json()).catch(() => null),
+    ]).then(([d, marketData, candidatesData, macroData]) => {
       if (d.error) { setError(d.error); return }
       setStocks(d.stocks || [])
       setScreening(d.screening || [])
       setCustomWatchlist(d.customWatchlist || [])
       if (Array.isArray(candidatesData)) setCandidates(candidatesData)
       if (marketData?.USDKRW?.price) setUsdkrw(marketData.USDKRW.price)
+      if (macroData) setMacro({
+        dgs10: macroData.dgs10 ?? null,
+        dgs10_5y_avg: macroData.dgs10_5y_avg ?? null,
+        dgs10_updated_at: macroData.dgs10_updated_at ?? null,
+      })
     }).catch(e => setError(String(e))).finally(() => setLoading(false))
   }, [])
 
@@ -163,15 +171,25 @@ export default function HomePage() {
       {/* 매수 신호 — 기준통과 + 가격 매력 둘 다 만족하는 진짜 신호만 */}
       {buySignals.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-base font-semibold mb-3">
-            🎯 매수 후보 {buySignals.length}건
-            <span className="ml-2 text-xs font-normal text-[#94A3B8]">기준 ✅ + 가격 ⚡ 둘 다 통과</span>
-            {priceOnlySignals > 0 && (
-              <span className="ml-2 text-xs font-normal text-amber-600">
-                · 가격만 매력 {priceOnlySignals}건
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-base font-semibold">
+              🎯 매수 후보 {buySignals.length}건
+              <span className="ml-2 text-xs font-normal text-[#94A3B8]">기준 ✅ + 가격 ⚡ 둘 다 통과</span>
+              {priceOnlySignals > 0 && (
+                <span className="ml-2 text-xs font-normal text-amber-600">
+                  · 가격만 매력 {priceOnlySignals}건
+                </span>
+              )}
+            </h2>
+            {/* DGS10 컨텍스트 뱃지 */}
+            {macro.dgs10 !== null && (
+              <span className="ml-auto text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                🏦 국채10Y {macro.dgs10.toFixed(2)}%
+                {macro.dgs10_5y_avg !== null && ` | 5년평균 ${macro.dgs10_5y_avg.toFixed(2)}%`}
+                <span className="ml-1 text-slate-400">· ERP 기준 신호</span>
               </span>
             )}
-          </h2>
+          </div>
           <div className="flex flex-col gap-2">
             {buySignals.map(({ ticker, name, source, sc }) => {
               const s = stockMap[ticker]
