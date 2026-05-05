@@ -17,6 +17,13 @@ interface CustomItem { ticker: string; name: string; sector: string|null; tier: 
 interface CandidateRow { ticker: string; name: string; status: string }
 interface MacroSummary { dgs10: number|null; dgs10_5y_avg: number|null; dgs10_updated_at: string|null }
 
+/** signal_reason에서 [강]·[중]·[약] 추출 */
+function parseStrength(reason: string | null | undefined): '강' | '중' | '약' | null {
+  if (!reason) return null
+  const m = reason.match(/^\[([강중약])\]/)
+  return m ? (m[1] as '강' | '중' | '약') : null
+}
+
 function analystLabel(rating: number | null): { emoji: string; label: string; color: string } {
   if (rating === null) return { emoji: '–', label: '–', color: 'text-slate-400' }
   if (rating <= 1.5) return { emoji: '🟢', label: '강력매수', color: 'text-emerald-600' }
@@ -231,10 +238,23 @@ export default function HomePage() {
           <div className="flex flex-col gap-2">
             {buySignals.map(({ ticker, name, source, sc }) => {
               const s = stockMap[ticker]
+              const strength = parseStrength(sc.signal_reason)
+              const strengthStyle: Record<string, { card: string; pill: string }> = {
+                강: { card: 'bg-emerald-50 border-emerald-300', pill: 'bg-emerald-600 text-white' },
+                중: { card: 'bg-blue-50 border-blue-200',     pill: 'bg-blue-500 text-white' },
+                약: { card: 'bg-amber-50 border-amber-200',   pill: 'bg-amber-400 text-white' },
+              }
+              const cardStyle = strength ? strengthStyle[strength].card : 'bg-emerald-50 border-emerald-200'
+              const pillStyle = strength ? strengthStyle[strength].pill : 'bg-slate-400 text-white'
               return (
-                <div key={ticker} className="flex items-center gap-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <div key={ticker} className={`flex items-center gap-4 p-4 border rounded-xl ${cardStyle}`}>
                   <div className="flex items-center gap-2 w-52 shrink-0">
                     <span className="text-base font-bold text-emerald-700">{ticker}</span>
+                    {strength && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${pillStyle}`}>
+                        {strength}
+                      </span>
+                    )}
                     {source === 'candidate' && <span className="text-[10px] bg-blue-100 text-[#1A56DB] px-1.5 py-0.5 rounded-full">후보</span>}
                     {source === 'custom' && <span className="text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">감시</span>}
                     <span className="text-sm font-semibold text-[#0F172A]">{name}</span>
@@ -244,7 +264,7 @@ export default function HomePage() {
                     {usdkrw && s?.price ? ` (₩${Math.round(s.price * usdkrw).toLocaleString()})` : ''}
                     {' '}· 배당률 {s?.div_yield?.toFixed(2) ?? '–'}%
                   </span>
-                  <span className="text-sm font-medium text-emerald-700">{sc.signal_reason}</span>
+                  <span className="text-sm font-medium text-slate-600">{sc.signal_reason}</span>
                 </div>
               )
             })}
