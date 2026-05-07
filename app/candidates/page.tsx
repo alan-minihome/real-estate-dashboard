@@ -17,6 +17,8 @@ interface Candidate {
   div_yield: number | null
   div_yield_5y: number | null
   div_growth_5y: number | null
+  eps_growth: number | null
+  eps_growth_fwd: number | null
   payout_ratio: number | null
   fcf_payout_ratio: number | null
   overall_pass: number | null
@@ -309,9 +311,15 @@ export default function CandidatesPage() {
               {watching.map(c => {
                 const cur = c.div_yield
                 const avg = c.div_yield_5y
-                const dgr = c.div_growth_5y ?? 5
                 const payout    = c.payout_ratio
                 const fcfPayout = c.fcf_payout_ratio
+                // 보수적 성장률: min(5년배당CAGR, EPS성장률천장, 12%) + 재무부담 패널티
+                const epsRef = c.eps_growth_fwd ?? c.eps_growth ?? 10
+                const rawGrowth = c.div_growth_5y ?? 5
+                let dgr = Math.min(rawGrowth, epsRef, 12)
+                if (payout !== null && payout > 70)       dgr *= 0.7
+                if (fcfPayout !== null && fcfPayout > 80) dgr *= 0.7
+                dgr = Math.round(dgr * 10) / 10
                 const diff = (cur != null && avg != null) ? cur - avg : null
 
                 // 재무 부담 여부 (독립적으로 카드에 표시)
@@ -341,8 +349,17 @@ export default function CandidatesPage() {
                   ? Math.min(95, Math.max(5, 50 + ((cur - avg) / avg) * 120))
                   : 50
 
-                // YOC 복리 계산
-                const yoc = (years: number) => cur != null ? cur * Math.pow(1 + dgr / 100, years) : null
+                // YOC 감쇠 복리: 1-5년 full / 6-10년 *0.7 / 11-20년 *0.5
+                const yoc = (years: number): number | null => {
+                  if (cur == null) return null
+                  const g = dgr / 100
+                  let y = cur
+                  for (let i = 1; i <= years; i++) {
+                    const decay = i <= 5 ? 1 : i <= 10 ? 0.7 : 0.5
+                    y *= (1 + g * decay)
+                  }
+                  return Math.round(y * 10) / 10
+                }
 
                 // 최근 실적
                 const evt = earningsEvents.find(e => e.ticker === c.ticker)
@@ -395,7 +412,7 @@ export default function CandidatesPage() {
                     {cur != null && (
                       <div className="mb-3 p-2.5 bg-white/70 rounded-lg border border-slate-100">
                         <p className="text-[10px] font-medium text-[#64748B] mb-1.5">
-                          📈 지금 매수 시 YOC 복리 예측 <span className="text-slate-400">(배당성장률 {dgr.toFixed(1)}%/yr 가정)</span>
+                          📈 지금 매수 시 YOC 복리 예측 <span className="text-slate-400">(배당성장률 {dgr.toFixed(1)}%/yr 가정 · 감쇠 적용)</span>
                         </p>
                         <div className="grid grid-cols-4 gap-1 text-center">
                           {([['현재', cur], ['5년', yoc(5)], ['10년', yoc(10)], ['20년', yoc(20)]] as [string, number | null][]).map(([label, val]) => (

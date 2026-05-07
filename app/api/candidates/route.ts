@@ -16,7 +16,7 @@ export function GET() {
       `SELECT
          c.*,
          s.div_yield, s.div_yield_5y, s.price,
-         s.payout_ratio, s.fcf_payout_ratio, s.div_growth_5y, s.peg, s.de_ratio, s.roe, s.eps_growth, s.fcf_yield,
+         s.payout_ratio, s.fcf_payout_ratio, s.div_growth_5y, s.peg, s.de_ratio, s.roe, s.eps_growth, s.eps_growth_fwd, s.fcf_yield,
          s.market_cap, s.sector,
          COALESCE(sc.overall_pass,  us.overall_pass)  AS overall_pass,
          COALESCE(sc.buy_signal,    us.buy_signal)    AS buy_signal,
@@ -26,7 +26,7 @@ export function GET() {
        FROM candidates c
        LEFT JOIN (
          SELECT s.ticker, s.div_yield, s.div_yield_5y, s.price,
-                s.payout_ratio, s.fcf_payout_ratio, s.div_growth_5y, s.peg, s.de_ratio, s.roe, s.eps_growth, s.fcf_yield,
+                s.payout_ratio, s.fcf_payout_ratio, s.div_growth_5y, s.peg, s.de_ratio, s.roe, s.eps_growth, s.eps_growth_fwd, s.fcf_yield,
                 s.market_cap, s.sector
          FROM stock_data s
          INNER JOIN (
@@ -74,6 +74,7 @@ export function GET() {
         de_ratio:        r.de_ratio        ?? null,
         roe:             r.roe             ?? null,
         eps_growth:      r.eps_growth      ?? null,
+        eps_growth_fwd:  r.eps_growth_fwd  ?? null,
         fcf_yield:       r.fcf_yield       ?? null,
         market_cap:      r.market_cap      ?? null,
         sector:          r.sector          ?? null,
