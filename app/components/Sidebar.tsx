@@ -15,6 +15,8 @@ const MENUS = [
   { href: '/signals',   label: '매수 신호',    icon: '⚡' },
   { href: '/calendar',  label: '배당 캘린더',  icon: '📅' },
   { href: '/macro',     label: '거시경제',     icon: '🌍' },
+  null, // 구분선
+  { href: '/book',      label: '책 핵심 정리', icon: '📖' },
 ]
 
 type StepState = 'idle' | 'running' | 'done' | 'error'

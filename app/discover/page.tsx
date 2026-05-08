@@ -43,6 +43,7 @@ export default function DiscoverPage() {
   const [minYield, setMinYield] = useState<number>(0)
   const [showWatchlist, setShowWatchlist] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // 일괄 선택
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -184,19 +185,28 @@ export default function DiscoverPage() {
     return ['전체', ...Array.from(s).sort()]
   }, [universe])
 
-  // 탭·섹터·배당률 필터 적용
-  const filtered = useMemo(() => universe.filter(u => {
-    if (!showWatchlist && u.inWatchlist) return false
-    if (sectorFilter !== '전체' && u.sector !== sectorFilter) return false
-    if (minYield > 0 && (!u.div_yield || u.div_yield < minYield)) return false
-    if (tab === 'dividend')    return (u.div_yield ?? 0) > 0
-    if (tab === 'king')       return u.tier === 'king' || u.tier === 'both'
-    if (tab === 'aristocrat') return u.tier === 'aristocrat' || u.tier === 'both'
-    if (tab === 'pass')       return u.overall_pass === 1
-    if (tab === 'buy')        return u.buy_signal === 1
-    if (tab === 'realbuy')    return u.overall_pass === 1 && u.buy_signal === 1
-    return true
-  }), [universe, tab, sectorFilter, minYield, showWatchlist])
+  // 탭·섹터·배당률·검색 필터 적용
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toUpperCase()
+    return universe.filter(u => {
+      // 검색어 있으면 탭·섹터·배당률 무시, 티커/종목명 매칭만 적용
+      if (q) {
+        if (!u.ticker.includes(q) && !(u.name || '').toUpperCase().includes(q)) return false
+        if (!showWatchlist && u.inWatchlist) return false
+        return true
+      }
+      if (!showWatchlist && u.inWatchlist) return false
+      if (sectorFilter !== '전체' && u.sector !== sectorFilter) return false
+      if (minYield > 0 && (!u.div_yield || u.div_yield < minYield)) return false
+      if (tab === 'dividend')    return (u.div_yield ?? 0) > 0
+      if (tab === 'king')        return u.tier === 'king' || u.tier === 'both'
+      if (tab === 'aristocrat')  return u.tier === 'aristocrat' || u.tier === 'both'
+      if (tab === 'pass')        return u.overall_pass === 1
+      if (tab === 'buy')         return u.buy_signal === 1
+      if (tab === 'realbuy')     return u.overall_pass === 1 && u.buy_signal === 1
+      return true
+    })
+  }, [universe, tab, sectorFilter, minYield, showWatchlist, searchQuery])
 
   // 정렬: 둘 다 통과(진짜 매수후보) → 기준통과 → 매수신호 → 배당률
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
@@ -514,9 +524,37 @@ export default function DiscoverPage() {
         </div>
       </div>
 
+      {/* 검색 */}
+      <div className="mb-3">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+          <input
+            type="text"
+            placeholder="티커 또는 종목명 검색 (예: AAPL, Microsoft)"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-9 py-2.5 text-sm border border-[#E2E8F0] rounded-xl bg-white focus:outline-none focus:border-[#1A56DB] focus:ring-1 focus:ring-[#1A56DB] transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="mt-1.5 text-xs text-[#64748B]">
+            검색 결과: <span className="font-medium text-[#0F172A]">{filtered.length}</span>종목
+            <span className="ml-2 text-slate-400">— 탭·섹터·배당률 필터는 검색 중 비활성화됩니다</span>
+          </p>
+        )}
+      </div>
+
       {/* 탭 */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+        <div className={`flex gap-1 bg-slate-100 rounded-lg p-1 ${searchQuery ? 'opacity-40 pointer-events-none' : ''}`}>
           {([
             { key: 'realbuy',    label: `🎯 매수 후보 (${realBuyCount})` },
             { key: 'pass',       label: `✅ 기준통과 (${passCount})` },
@@ -539,7 +577,7 @@ export default function DiscoverPage() {
         </div>
 
         {/* 섹터·배당률 필터 */}
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-3 ${searchQuery ? 'opacity-40 pointer-events-none' : ''}`}>
           <select
             value={sectorFilter}
             onChange={e => setSectorFilter(e.target.value)}
