@@ -264,16 +264,16 @@ function CriteriaCard({ c, value, active, onToggle, onChange }: {
 function ColTooltip({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   const [show, setShow] = useState(false)
   return (
-    <span className="relative inline-flex items-center gap-0.5 cursor-help group"
+    <span className="relative inline-flex items-center gap-0.5 cursor-help whitespace-nowrap"
       onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       {label}
-      <span className="text-[10px] text-slate-400 group-hover:text-blue-500">?</span>
+      <span className="text-[9px] text-slate-400 hover:text-blue-500 leading-none">❓</span>
       {show && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 pointer-events-none">
+          <div className="w-2 h-2 bg-[#1E293B] rotate-45 mx-auto mb-[-4px]" />
           <div className="bg-[#1E293B] text-white text-xs rounded-xl shadow-xl p-3 w-64 leading-relaxed whitespace-normal text-left">
             {children}
           </div>
-          <div className="w-2 h-2 bg-[#1E293B] rotate-45 mx-auto -mt-1" />
         </div>
       )}
     </span>
@@ -580,8 +580,8 @@ export default function EtfScreenerPage() {
             <tr className="bg-slate-50 border-b border-[#E2E8F0] sticky top-0 z-20">
               <th className="text-left px-4 py-3 font-medium text-[#64748B] sticky left-0 bg-slate-50 z-30 border-r border-[#E2E8F0]">티커</th>
               <th className="text-left px-3 py-3 font-medium text-[#64748B] text-xs min-w-[130px]">ETF명</th>
-              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs">카테고리</th>
-              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs">
+              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">카테고리</th>
+              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
                 <ColTooltip label="배당률">
                   <strong>배당률 (Dividend Yield)</strong><br/>
                   현재 주가 대비 연간 배당금 비율입니다.<br/><br/>
@@ -591,7 +591,7 @@ export default function EtfScreenerPage() {
                   <span className="text-yellow-300">⚠ 높을수록 좋지만 지속 가능성과 함께 봐야 합니다.</span>
                 </ColTooltip>
               </th>
-              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs">
+              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
                 <ColTooltip label="보수">
                   <strong>운용보수 (Expense Ratio)</strong><br/>
                   ETF 운용사가 매년 자동 차감하는 수수료입니다.<br/><br/>
@@ -601,7 +601,7 @@ export default function EtfScreenerPage() {
                   <span className="text-yellow-300">⚠ 0.5% 차이가 20년 뒤 수익률을 수십% 바꿉니다.</span>
                 </ColTooltip>
               </th>
-              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs">
+              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
                 <ColTooltip label="AUM">
                   <strong>AUM (운용자산 규모)</strong><br/>
                   Assets Under Management. ETF에 투자된 총 금액입니다.<br/><br/>
@@ -610,7 +610,7 @@ export default function EtfScreenerPage() {
                   <span className="text-yellow-300">⚠ AUM 부족 ETF는 NAV 괴리율 확대, 청산 위험이 있습니다.</span>
                 </ColTooltip>
               </th>
-              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs">
+              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
                 <ColTooltip label="배당성장↑">
                   <strong>5년 배당성장률 CAGR</strong><br/>
                   최근 5개 완성연도 기준 연간 배당금 복리 성장률입니다. (현재 연도 제외)<br/><br/>
@@ -622,7 +622,7 @@ export default function EtfScreenerPage() {
                   <span className="text-yellow-300">커버드콜 ETF는 옵션 구조상 성장률이 낮거나 음(-)일 수 있습니다.</span>
                 </ColTooltip>
               </th>
-              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs">
+              <th className="text-right px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
                 <ColTooltip label="총수익↑">
                   <strong>5년 총수익 CAGR ★</strong><br/>
                   주가 상승 + 배당금 재투자를 합산한 연복리 수익률입니다.<br/><br/>
@@ -633,7 +633,7 @@ export default function EtfScreenerPage() {
                   <span className="text-yellow-300">⭐ 단일 최강 필터 — 이 항목 하나로 분배금 함정 ETF 대부분 제거 가능</span>
                 </ColTooltip>
               </th>
-              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs">
+              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
                 <ColTooltip label="주기">
                   <strong>배당 지급 주기</strong><br/>
                   • 월배당: 매월 지급 (JEPI·QYLD·JEPQ)<br/>
@@ -642,7 +642,7 @@ export default function EtfScreenerPage() {
                   현금흐름이 필요하면 월배당, 장기 복리 목적이면 주기는 성과에 영향 없습니다.
                 </ColTooltip>
               </th>
-              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs">
+              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
                 <ColTooltip label="감배">
                   <strong>감배 횟수 (Dividend Cut)</strong><br/>
                   배당 삭감을 뜻합니다. 최근 5개 완성연도 중 연간 배당 총액이 전년 대비 5% 이상 감소한 횟수입니다.<br/><br/>
@@ -651,7 +651,7 @@ export default function EtfScreenerPage() {
                   <span className="text-yellow-300">⚠ 감배는 ETF 내 기업들의 배당 건전성 악화 신호입니다. "감배 없음" 필터로 안정적인 ETF만 추릴 수 있습니다.</span>
                 </ColTooltip>
               </th>
-              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs">
+              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
                 <ColTooltip label="섹터집중">
                   <strong>섹터 집중도 (Top Sector)</strong><br/>
                   ETF 내 가장 높은 비중을 차지하는 단일 섹터와 그 비율입니다.<br/><br/>
@@ -681,12 +681,12 @@ export default function EtfScreenerPage() {
                     {overallPass && <span className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">통과</span>}
                   </td>
                   {/* ETF명 */}
-                  <td className="px-3 py-3 text-xs text-[#0F172A]" title={etf.description ?? ''}>
-                    <span className="line-clamp-1">{etf.name}</span>
+                  <td className="px-3 py-3 text-xs text-[#0F172A] max-w-[150px] overflow-hidden" title={etf.name}>
+                    <span className="block truncate">{etf.name}</span>
                   </td>
                   {/* 카테고리 */}
-                  <td className="px-2 py-3 text-center">
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${CATEGORY_COLOR[etf.category] ?? ''}`}>
+                  <td className="px-2 py-3 text-center whitespace-nowrap">
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${CATEGORY_COLOR[etf.category] ?? ''}`}>
                       {CATEGORY_LABEL[etf.category]}
                     </span>
                   </td>
@@ -725,9 +725,9 @@ export default function EtfScreenerPage() {
                       : <span className="text-slate-300">—</span>}
                   </td>
                   {/* 배당주기 */}
-                  <td className="px-2 py-3 text-center">
+                  <td className="px-2 py-3 text-center whitespace-nowrap">
                     {etf.div_frequency
-                      ? <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${FREQ_COLOR[etf.div_frequency] ?? ''}`}>{FREQ_LABEL[etf.div_frequency] ?? etf.div_frequency}</span>
+                      ? <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${FREQ_COLOR[etf.div_frequency] ?? ''}`}>{FREQ_LABEL[etf.div_frequency] ?? etf.div_frequency}</span>
                       : <span className="text-slate-300">—</span>}
                   </td>
                   {/* 감배 횟수 */}
