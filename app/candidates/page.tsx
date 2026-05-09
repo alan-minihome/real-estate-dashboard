@@ -654,7 +654,7 @@ export default function CandidatesPage() {
       )}
 
       {/* 실적 이력 — 최근 실적 / 종목별 이력 탭 */}
-      {earningsEvents.length > 0 && (() => {
+      {(() => {
         // 날짜별 그룹 (최근 실적 탭)
         const byDate: Record<string, EarningsEvent[]> = {}
         earningsEvents.forEach(e => {
@@ -706,6 +706,12 @@ export default function CandidatesPage() {
             {/* ── 최근 실적 탭 ── */}
             {earningsTab === 'recent' && (
               <div className="divide-y divide-[#E2E8F0]">
+                {dates.length === 0 && (
+                  <div className="px-5 py-8 text-center">
+                    <p className="text-sm text-slate-400">이번 주 수집된 실적 기사가 없습니다</p>
+                    <p className="text-xs text-slate-300 mt-1">보유 종목의 분기 실적 발표가 없었거나, 다음 월요일에 확인해 주세요</p>
+                  </div>
+                )}
                 {dates.map(date => (
                   <div key={date}>
                     <div className="px-4 py-2 bg-slate-50/60 flex items-center gap-2">
@@ -752,6 +758,12 @@ export default function CandidatesPage() {
             {/* ── 종목별 이력 탭 ── */}
             {earningsTab === 'history' && (
               <div className="divide-y divide-[#E2E8F0]">
+                {watchingTickers.filter(t => byTicker[t]?.length > 0).length === 0 && (
+                  <div className="px-5 py-8 text-center">
+                    <p className="text-sm text-slate-400">수집된 실적 이력이 없습니다</p>
+                    <p className="text-xs text-slate-300 mt-1">매주 월요일 자동 수집됩니다</p>
+                  </div>
+                )}
                 {watchingTickers.filter(t => byTicker[t]?.length > 0).map(ticker => {
                   const events = byTicker[ticker]
                   const isExpanded = expandedTicker === ticker
