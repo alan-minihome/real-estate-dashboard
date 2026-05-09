@@ -64,6 +64,7 @@ export function GET() {
         target_shares:   r.target_shares,
         memo:            r.memo,
         status:          r.status,
+        asset_type:      (r.asset_type ?? 'stock') as string,
         div_yield:       r.div_yield       ?? null,
         div_yield_5y:    r.div_yield_5y    ?? null,
         price:           r.price           ?? null,

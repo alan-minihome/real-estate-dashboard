@@ -13,6 +13,7 @@ interface Candidate {
   target_shares: number
   memo: string
   status: string
+  asset_type: string   // 'stock' | 'krx_etf' | 'us_etf'
   price: number | null
   div_yield: number | null
   div_yield_5y: number | null
@@ -220,7 +221,8 @@ export default function CandidatesPage() {
     )
   }
 
-  const watching = candidates.filter(c => c.status === 'watching')
+  const watching  = candidates.filter(c => c.status === 'watching'  && c.asset_type === 'stock')
+  const watchingEtf = candidates.filter(c => c.status === 'watching' && c.asset_type !== 'stock')
   const purchased = candidates.filter(c => c.status === 'purchased')
 
   const totalAnnualDiv = watching.reduce((sum, c) => {
@@ -857,6 +859,54 @@ export default function CandidatesPage() {
           </div>
         )
       })()}
+
+      {/* ETF 적립 현황 */}
+      {watchingEtf.length > 0 && (
+        <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#E2E8F0] bg-slate-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-[#0F172A]">ETF 적립 ({watchingEtf.length})</h2>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">매월 적립</span>
+            </div>
+            <p className="text-xs text-[#64748B]">국내 상장 미국 ETF · 매월 {watchingEtf.reduce((s, c) => s + (c.target_shares || 0), 0)}주 예정</p>
+          </div>
+          <div className="divide-y divide-[#E2E8F0]">
+            {watchingEtf.map(c => {
+              const isKrx = c.asset_type === 'krx_etf'
+              return (
+                <div key={c.id} className="px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-violet-700">{c.ticker}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-200 font-medium">
+                          {isKrx ? 'KRX ETF' : 'US ETF'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#64748B] mt-0.5">{c.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-right">
+                    <div>
+                      <p className="text-xs text-[#94A3B8]">월 적립</p>
+                      <p className="text-sm font-semibold text-[#0F172A]">{c.target_shares}주</p>
+                    </div>
+                    {c.memo ? (
+                      <p className="text-xs text-[#64748B] max-w-[160px] text-right">{c.memo}</p>
+                    ) : null}
+                    <button onClick={() => remove(c.id)} className="text-xs text-[#94A3B8] hover:text-red-400">제거</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="px-4 py-2.5 bg-slate-50/50 border-t border-[#E2E8F0]">
+            <p className="text-[10px] text-[#94A3B8]">
+              💡 ETF 스크리너·발굴 기능은 추후 추가 예정 — 지금은 적립 현황만 기록합니다
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 매수 완료 종목 */}
       {purchased.length > 0 && (
