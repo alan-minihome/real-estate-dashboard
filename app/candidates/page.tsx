@@ -655,15 +655,22 @@ export default function CandidatesPage() {
 
       {/* 실적 이력 — 최근 실적 / 종목별 이력 탭 */}
       {(() => {
-        // 날짜별 그룹 (최근 실적 탭)
-        const byDate: Record<string, EarningsEvent[]> = {}
-        earningsEvents.forEach(e => {
-          if (!byDate[e.reported_date]) byDate[e.reported_date] = []
-          byDate[e.reported_date].push(e)
-        })
-        const dates = Object.keys(byDate).sort().reverse()
+        const toneConfig = (tone: string | null) => {
+          if (tone === 'positive') return { dot: '●', cls: 'text-emerald-500', badge: 'text-emerald-700 bg-emerald-50 border-emerald-200', label: '▲ 긍정' }
+          if (tone === 'negative') return { dot: '✕', cls: 'text-red-500',     badge: 'text-red-700 bg-red-50 border-red-200',       label: '▼ 부정' }
+          return                          { dot: '○', cls: 'text-slate-400',   badge: 'text-slate-600 bg-slate-50 border-slate-200',  label: '→ 중립' }
+        }
 
-        // 종목별 그룹 (종목별 이력 탭) — watching 순서 유지
+        // ── 최근 실적 탭: 월별 그룹 ──
+        const byMonth: Record<string, EarningsEvent[]> = {}
+        earningsEvents.forEach(e => {
+          const m = e.reported_date.slice(0, 7)
+          if (!byMonth[m]) byMonth[m] = []
+          byMonth[m].push(e)
+        })
+        const months = Object.keys(byMonth).sort().reverse()
+
+        // ── 종목별 이력 탭 ──
         const watchingTickers = watching.map(c => c.ticker)
         const byTicker: Record<string, EarningsEvent[]> = {}
         watchingTickers.forEach(t => {
@@ -672,10 +679,13 @@ export default function CandidatesPage() {
             .sort((a, b) => b.reported_date.localeCompare(a.reported_date))
         })
 
-        const toneConfig = (tone: string | null) => {
-          if (tone === 'positive') return { dot: '●', cls: 'text-emerald-500', badge: 'text-emerald-700 bg-emerald-50 border-emerald-200', label: '▲ 긍정' }
-          if (tone === 'negative') return { dot: '✕', cls: 'text-red-500', badge: 'text-red-700 bg-red-50 border-red-200', label: '▼ 부정' }
-          return { dot: '○', cls: 'text-slate-400', badge: 'text-slate-600 bg-slate-50 border-slate-200', label: '→ 중립' }
+        const MONTH_KR: Record<string, string> = {
+          '01':'1월','02':'2월','03':'3월','04':'4월','05':'5월','06':'6월',
+          '07':'7월','08':'8월','09':'9월','10':'10월','11':'11월','12':'12월',
+        }
+        const fmtMonth = (ym: string) => {
+          const [y, m] = ym.split('-')
+          return `${y}년 ${MONTH_KR[m] || m}`
         }
 
         return (
@@ -683,75 +693,83 @@ export default function CandidatesPage() {
             {/* 헤더 + 탭 */}
             <div className="px-4 py-3 border-b border-[#E2E8F0] bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setEarningsTab('recent')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                    earningsTab === 'recent'
-                      ? 'bg-[#1A56DB] text-white'
-                      : 'text-[#64748B] hover:bg-slate-200'
-                  }`}
+                <button onClick={() => setEarningsTab('recent')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${earningsTab === 'recent' ? 'bg-[#1A56DB] text-white' : 'text-[#64748B] hover:bg-slate-200'}`}
                 >📅 최근 실적</button>
-                <button
-                  onClick={() => setEarningsTab('history')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                    earningsTab === 'history'
-                      ? 'bg-[#1A56DB] text-white'
-                      : 'text-[#64748B] hover:bg-slate-200'
-                  }`}
+                <button onClick={() => setEarningsTab('history')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${earningsTab === 'history' ? 'bg-[#1A56DB] text-white' : 'text-[#64748B] hover:bg-slate-200'}`}
                 >📊 종목별 이력</button>
               </div>
               <span className="text-[10px] text-[#94A3B8]">매주 월요일 자동 수집</span>
             </div>
 
-            {/* ── 최근 실적 탭 ── */}
+            {/* ── 최근 실적 탭: 월별 접이식 ── */}
             {earningsTab === 'recent' && (
-              <div className="divide-y divide-[#E2E8F0]">
-                {dates.length === 0 && (
+              <div>
+                {months.length === 0 && (
                   <div className="px-5 py-8 text-center">
-                    <p className="text-sm text-slate-400">이번 주 수집된 실적 기사가 없습니다</p>
-                    <p className="text-xs text-slate-300 mt-1">보유 종목의 분기 실적 발표가 없었거나, 다음 월요일에 확인해 주세요</p>
+                    <p className="text-sm text-slate-400">수집된 실적 기사가 없습니다</p>
+                    <p className="text-xs text-slate-300 mt-1">분기 실적 발표 후 매주 월요일 자동 수집됩니다</p>
                   </div>
                 )}
-                {dates.map(date => (
-                  <div key={date}>
-                    <div className="px-4 py-2 bg-slate-50/60 flex items-center gap-2">
-                      <span className="text-xs font-semibold text-[#64748B]">{date}</span>
-                      <span className="text-[10px] text-[#94A3B8]">실적 발표</span>
-                    </div>
-                    {byDate[date].map(e => {
-                      const tc = toneConfig(e.guidance_tone)
-                      return (
-                        <div key={e.id} className="px-4 py-3 flex items-start gap-3 hover:bg-slate-50/50 transition-colors">
-                          <span className="text-sm font-bold text-[#1A56DB] w-14 shrink-0 pt-0.5">{e.ticker}</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              {e.eps_surprise_pct !== null && (
-                                <span className={`text-xs font-semibold ${e.eps_surprise_pct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                  EPS {e.eps_surprise_pct >= 0 ? '+' : ''}{e.eps_surprise_pct}%
-                                </span>
-                              )}
-                              {e.guidance_tone && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${tc.badge}`}>
-                                  {tc.label}
-                                </span>
-                              )}
-                            </div>
-                            {e.headline && (
-                              <p className="text-xs font-medium text-[#0F172A] mb-1 leading-snug">{e.headline}</p>
-                            )}
-                            {e.summary && (
-                              <p className="text-xs text-[#64748B] leading-relaxed">{e.summary}</p>
-                            )}
-                            {e.source_url && (
-                              <a href={e.source_url} target="_blank" rel="noopener noreferrer"
-                                className="text-[10px] text-[#1A56DB] hover:underline mt-1 inline-block">원문 →</a>
-                            )}
-                          </div>
+                {months.map((ym, mi) => {
+                  const evts = byMonth[ym].sort((a, b) => b.reported_date.localeCompare(a.reported_date))
+                  const isOpen = expandedTicker === `month-${ym}` || (mi === 0 && expandedTicker === null)
+                  const positiveCount = evts.filter(e => e.guidance_tone === 'positive').length
+                  const negativeCount = evts.filter(e => e.guidance_tone === 'negative').length
+                  return (
+                    <div key={ym} className="border-b border-[#E2E8F0] last:border-b-0">
+                      {/* 월 헤더 — 클릭으로 접기/펼치기 */}
+                      <button
+                        onClick={() => setExpandedTicker(isOpen ? `month-${ym}-closed` : `month-${ym}`)}
+                        className="w-full px-4 py-2.5 flex items-center gap-3 bg-slate-50/70 hover:bg-slate-100/70 transition-colors text-left"
+                      >
+                        <span className="text-xs font-bold text-[#0F172A] w-28 shrink-0">{fmtMonth(ym)}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-slate-500">{evts.length}건</span>
+                          {positiveCount > 0 && <span className="text-[10px] text-emerald-600">●{positiveCount} 긍정</span>}
+                          {negativeCount > 0 && <span className="text-[10px] text-red-500">✕{negativeCount} 부정</span>}
                         </div>
-                      )
-                    })}
-                  </div>
-                ))}
+                        <span className="ml-auto text-[#94A3B8] text-xs">{isOpen ? '▲' : '▼'}</span>
+                      </button>
+
+                      {/* 해당 월 기사 목록 */}
+                      {isOpen && (
+                        <div className="divide-y divide-[#E2E8F0]/60">
+                          {evts.map(e => {
+                            const tc = toneConfig(e.guidance_tone)
+                            return (
+                              <div key={e.id} className="px-4 py-3 flex items-start gap-3 hover:bg-slate-50/40 transition-colors">
+                                {/* 왼쪽: 티커 + 날짜 */}
+                                <div className="w-20 shrink-0">
+                                  <p className="text-sm font-bold text-[#1A56DB] leading-tight">{e.ticker}</p>
+                                  <p className="text-[10px] text-[#94A3B8] leading-tight">{e.reported_date.slice(5)}</p>
+                                </div>
+                                {/* 중앙: 뱃지 + 헤드라인 + 요약 */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    {e.eps_surprise_pct !== null && (
+                                      <span className={`text-xs font-semibold ${e.eps_surprise_pct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                        EPS {e.eps_surprise_pct >= 0 ? '+' : ''}{e.eps_surprise_pct}%
+                                      </span>
+                                    )}
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${tc.badge}`}>{tc.label}</span>
+                                  </div>
+                                  {e.headline && <p className="text-xs font-medium text-[#0F172A] mb-1 leading-snug">{e.headline}</p>}
+                                  {e.summary && <p className="text-xs text-[#64748B] leading-relaxed">{e.summary}</p>}
+                                  {e.source_url && (
+                                    <a href={e.source_url} target="_blank" rel="noopener noreferrer"
+                                      className="text-[10px] text-[#1A56DB] hover:underline mt-1 inline-block">원문 →</a>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
 
@@ -768,41 +786,34 @@ export default function CandidatesPage() {
                   const events = byTicker[ticker]
                   const isExpanded = expandedTicker === ticker
                   const latestTone = events[0]?.guidance_tone
-                  const hasWarning = latestTone === 'negative' || latestTone === 'neutral'
                   const candidateName = watching.find(c => c.ticker === ticker)?.name || ticker
-
                   return (
                     <div key={ticker}>
                       <button
                         onClick={() => setExpandedTicker(isExpanded ? null : ticker)}
                         className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
                       >
-                        <span className={`text-sm font-bold w-14 shrink-0 ${hasWarning && latestTone === 'negative' ? 'text-red-600' : 'text-[#1A56DB]'}`}>
-                          {ticker}
-                        </span>
-                        {/* 트렌드 도트 */}
+                        <span className={`text-sm font-bold w-14 shrink-0 ${latestTone === 'negative' ? 'text-red-600' : 'text-[#1A56DB]'}`}>{ticker}</span>
+                        {/* 분기별 트렌드 도트 */}
                         <div className="flex items-center gap-1">
                           {events.map((e, i) => {
                             const tc = toneConfig(e.guidance_tone)
                             return (
-                              <span key={i} className={`text-base leading-none ${tc.cls}`} title={`${e.reported_date} · EPS ${e.eps_surprise_pct !== null ? (e.eps_surprise_pct >= 0 ? '+' : '') + e.eps_surprise_pct + '%' : '–'}`}>
+                              <span key={i} className={`text-base leading-none ${tc.cls}`}
+                                title={`${e.reported_date} · EPS ${e.eps_surprise_pct !== null ? (e.eps_surprise_pct >= 0 ? '+' : '') + e.eps_surprise_pct + '%' : '–'}`}>
                                 {tc.dot}
                               </span>
                             )
                           })}
                         </div>
-                        {/* 날짜 태그들 */}
+                        {/* 분기 날짜 */}
                         <div className="flex items-center gap-1 flex-wrap flex-1">
                           {events.map((e, i) => (
                             <span key={i} className="text-[10px] text-[#94A3B8]">{e.reported_date.slice(0, 7)}</span>
                           ))}
                         </div>
-                        {latestTone === 'neutral' && (
-                          <span className="text-[10px] text-amber-600 font-medium shrink-0">최근 중립 주의</span>
-                        )}
-                        {latestTone === 'negative' && (
-                          <span className="text-[10px] text-red-600 font-medium shrink-0">⚠️ 최근 부정</span>
-                        )}
+                        {latestTone === 'neutral'  && <span className="text-[10px] text-amber-600 font-medium shrink-0">최근 중립 주의</span>}
+                        {latestTone === 'negative' && <span className="text-[10px] text-red-600 font-medium shrink-0">⚠️ 최근 부정</span>}
                         <span className="text-[#94A3B8] text-xs shrink-0">{isExpanded ? '▲' : '▼'}</span>
                       </button>
 
