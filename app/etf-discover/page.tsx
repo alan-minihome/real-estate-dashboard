@@ -23,6 +23,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   aristocrat:      '귀족·킹',
   reit:            '리츠',
   international:   '글로벌',
+  broad_market:    '시장비교',
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -32,6 +33,7 @@ const CATEGORY_COLOR: Record<string, string> = {
   aristocrat:      'bg-amber-100 text-amber-800',
   reit:            'bg-orange-100 text-orange-800',
   international:   'bg-sky-100 text-sky-800',
+  broad_market:    'bg-gray-100 text-gray-700',
 }
 
 const FREQ_LABEL: Record<string, string> = {
@@ -48,7 +50,7 @@ const FREQ_COLOR: Record<string, string> = {
   unknown:   'bg-gray-50 text-gray-400',
 }
 
-type Tab = 'all' | 'dividend_growth' | 'high_dividend' | 'covered_call' | 'aristocrat' | 'reit' | 'international'
+type Tab = 'all' | 'dividend_growth' | 'high_dividend' | 'covered_call' | 'aristocrat' | 'reit' | 'international' | 'broad_market'
 
 function fmtAum(aum: number | null) {
   if (!aum) return 'N/A'
@@ -79,6 +81,9 @@ export default function EtfDiscoverPage() {
   const [showWatchlist, setShowWatchlist] = useState(false)
   const [addedSet, setAddedSet] = useState<Set<string>>(new Set())
   const [addingTicker, setAddingTicker] = useState<string | null>(null)
+  const [directInput, setDirectInput] = useState('')
+  const [directAdding, setDirectAdding] = useState(false)
+  const [directMsg, setDirectMsg] = useState('')
 
   useEffect(() => {
     fetch('/api/etf-universe')
@@ -117,6 +122,29 @@ export default function EtfDiscoverPage() {
     })
   }, [etfs, tab, minYield, maxExpense, freqFilter, searchQuery, showWatchlist])
 
+  async function addDirectTicker() {
+    const ticker = directInput.trim().toUpperCase()
+    if (!ticker) return
+    setDirectAdding(true)
+    setDirectMsg('')
+    try {
+      const res = await fetch('/api/etf-universe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, name: ticker, asset_type: 'us_etf' }),
+      })
+      if (res.ok) {
+        setAddedSet(prev => new Set([...prev, ticker]))
+        setDirectMsg(`✓ ${ticker} 예비 후보함에 추가됐습니다`)
+        setDirectInput('')
+      } else {
+        setDirectMsg('추가 실패 — 다시 시도해 주세요')
+      }
+    } finally {
+      setDirectAdding(false)
+    }
+  }
+
   async function addToWatchlist(e: EtfItem) {
     if (addingTicker) return
     setAddingTicker(e.ticker)
@@ -145,6 +173,7 @@ export default function EtfDiscoverPage() {
     { key: 'aristocrat',     label: '귀족·킹' },
     { key: 'reit',           label: '리츠' },
     { key: 'international',  label: '글로벌' },
+    { key: 'broad_market',   label: '시장비교' },
   ]
 
   const categoryCounts = useMemo(() => {
@@ -187,7 +216,7 @@ export default function EtfDiscoverPage() {
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-4 sm:grid-cols-7 gap-3 mb-6">
         {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
           <button
             key={key}
@@ -222,6 +251,33 @@ export default function EtfDiscoverPage() {
             >✕</button>
           )}
         </div>
+      </div>
+
+      {/* 직접 추가 */}
+      <div className="mb-4 flex items-center gap-2">
+        <div className="flex-1 flex items-center gap-2 bg-white rounded-xl border border-[#E2E8F0] px-3 py-2">
+          <span className="text-[#94A3B8] text-xs font-medium shrink-0">티커 직접 추가</span>
+          <input
+            type="text"
+            value={directInput}
+            onChange={e => setDirectInput(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key === 'Enter' && addDirectTicker()}
+            placeholder="예: QQQ, VOO, SCHD"
+            className="flex-1 text-sm text-[#1E293B] placeholder-[#CBD5E1] focus:outline-none"
+          />
+          {directMsg && (
+            <span className={`text-xs shrink-0 ${directMsg.startsWith('✓') ? 'text-emerald-600' : 'text-red-500'}`}>
+              {directMsg}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={addDirectTicker}
+          disabled={directAdding || !directInput.trim()}
+          className="px-4 py-2 bg-[#1E293B] text-white text-sm font-medium rounded-xl hover:bg-[#334155] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+        >
+          {directAdding ? '추가 중…' : '+ 후보함 추가'}
+        </button>
       </div>
 
       {/* 탭 + 필터 (검색 중이면 dimmed) */}

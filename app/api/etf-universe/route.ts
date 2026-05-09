@@ -12,6 +12,11 @@ interface EtfRow {
   inception_year: number | null
   description: string | null
   screened_at: string | null
+  div_growth_5y: number | null
+  div_cut_count: number | null
+  total_return_5y: number | null
+  top_sector: string | null
+  top_sector_pct: number | null
 }
 
 // expense_ratio 정규화: DB에 혼재된 단위 통일 (> 1이면 ÷100)
@@ -33,17 +38,22 @@ export function GET() {
     )
 
     const result = etfs.map(e => ({
-      ticker:        e.ticker,
-      name:          e.name ?? e.ticker,
-      category:      e.category,
-      div_yield:     e.div_yield ?? null,
-      expense_ratio: normalizeExpense(e.expense_ratio),
-      aum:           e.aum ?? null,
-      div_frequency: e.div_frequency ?? null,
-      inception_year: e.inception_year ?? null,
-      description:   e.description ?? null,
-      screened_at:   e.screened_at ?? null,
-      inWatchlist:   candidateTickers.has(e.ticker),
+      ticker:          e.ticker,
+      name:            e.name ?? e.ticker,
+      category:        e.category,
+      div_yield:       e.div_yield ?? null,
+      expense_ratio:   normalizeExpense(e.expense_ratio),
+      aum:             e.aum ?? null,
+      div_frequency:   e.div_frequency ?? null,
+      inception_year:  e.inception_year ?? null,
+      description:     e.description ?? null,
+      screened_at:     e.screened_at ?? null,
+      div_growth_5y:   e.div_growth_5y ?? null,
+      div_cut_count:   e.div_cut_count ?? null,
+      total_return_5y: e.total_return_5y ?? null,
+      top_sector:      e.top_sector ?? null,
+      top_sector_pct:  e.top_sector_pct ?? null,
+      inWatchlist:     candidateTickers.has(e.ticker),
     }))
 
     return NextResponse.json({ etfs: result })

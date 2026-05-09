@@ -12,6 +12,7 @@ const MENUS = [
   { href: '/candidates',  label: '예비 후보함',  icon: '📋' },
   null, // 구분선
   { href: '/etf-discover', label: 'ETF 발굴',    icon: '🏦' },
+  { href: '/etf-screener', label: 'ETF 스크리너', icon: '🎯' },
   { href: '/simulation', label: '배당 시뮬레이션', icon: '🧮' },
   null, // 구분선
   { href: '/signals',   label: '매수 신호',    icon: '⚡' },
