@@ -7,9 +7,11 @@ const MENUS = [
   { href: '/',          label: '홈',           icon: '💰' },
   { href: '/portfolio', label: '포트폴리오',    icon: '📊' },
   null, // 구분선
-  { href: '/discover',   label: '신규 발굴',    icon: '🔭' },
-  { href: '/screener',  label: '종목 스크리너', icon: '🔍' },
-  { href: '/candidates', label: '예비 후보함',  icon: '📋' },
+  { href: '/discover',     label: '신규 발굴',    icon: '🔭' },
+  { href: '/screener',    label: '종목 스크리너', icon: '🔍' },
+  { href: '/candidates',  label: '예비 후보함',  icon: '📋' },
+  null, // 구분선
+  { href: '/etf-discover', label: 'ETF 발굴',    icon: '🏦' },
   { href: '/simulation', label: '배당 시뮬레이션', icon: '🧮' },
   null, // 구분선
   { href: '/signals',   label: '매수 신호',    icon: '⚡' },
