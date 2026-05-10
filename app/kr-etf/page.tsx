@@ -37,6 +37,11 @@ const KR_MANUAL: Record<string, { expense: number; yield_pct?: number; aum_100m?
   '251340': { expense: 0.09,  yield_pct: 1.1,  aum_100m: 3000  }, // TIGER 미국전체주식시장
   '352560': { expense: 0.09,  yield_pct: 3.8,  aum_100m: 2000  }, // KODEX 미국리츠
   '492580': { expense: 0.09,  yield_pct: 2.8,  aum_100m: 1000  }, // TIGER 미국고배당
+  // ACE (한국투자신탁운용)
+  '367380': { expense: 0.07,  yield_pct: 0.5,  aum_100m: 15000 }, // ACE 미국나스닥100
+  '360200': { expense: 0.07,  yield_pct: 1.2,  aum_100m: 8000  }, // ACE 미국S&P500
+  '465580': { expense: 0.09,  yield_pct: 3.0,  aum_100m: 3000  }, // ACE 미국배당다우존스
+  '480610': { expense: 0.39,  yield_pct: 7.0,  aum_100m: 1000  }, // ACE 미국배당+7%프리미엄
 }
 
 // ── 미국 ETF 대비 총보수 차이 (국내 - 미국, 대략 계산용) ─────────────────
@@ -55,8 +60,9 @@ const FREQ_COLOR: Record<string, string> = {
   annual: 'bg-gray-100 text-gray-600',
 }
 const ISSUER_COLOR: Record<string, string> = {
-  'KODEX': 'bg-blue-100 text-blue-700',
-  'TIGER': 'bg-orange-100 text-orange-700',
+  'KODEX':  'bg-blue-100 text-blue-700',
+  'TIGER':  'bg-orange-100 text-orange-700',
+  'ACE':    'bg-emerald-100 text-emerald-700',
   'KINDEX': 'bg-purple-100 text-purple-700',
 }
 
@@ -77,7 +83,7 @@ function ExpenseDiff({ krExpense, usEquiv }: { krExpense: number; usEquiv: strin
   )
 }
 
-type FilterTab = '전체' | 'KODEX' | 'TIGER' | '절세계좌'
+type FilterTab = '전체' | 'KODEX' | 'TIGER' | 'ACE' | '절세계좌'
 type SortKey = 'name' | 'expense' | 'yield' | 'aum'
 
 export default function KrEtfPage() {
@@ -116,6 +122,7 @@ export default function KrEtfPage() {
     let list = merged
     if (tab === 'KODEX') list = list.filter(e => e.issuer === 'KODEX')
     else if (tab === 'TIGER') list = list.filter(e => e.issuer === 'TIGER')
+    else if (tab === 'ACE') list = list.filter(e => e.issuer === 'ACE')
     else if (tab === '절세계좌') list = list.filter(e => e.isa_eligible || e.pension_eligible)
 
     return [...list].sort((a, b) => {
@@ -149,6 +156,7 @@ export default function KrEtfPage() {
   const totalEtfs = merged.length
   const kodexCount = merged.filter(e => e.issuer === 'KODEX').length
   const tigerCount = merged.filter(e => e.issuer === 'TIGER').length
+  const aceCount   = merged.filter(e => e.issuer === 'ACE').length
   const monthlyCount = merged.filter(e => e.div_frequency === 'monthly').length
 
   return (
@@ -186,11 +194,12 @@ export default function KrEtfPage() {
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-5 gap-3 mb-6">
         {[
           { label: '총 종목', value: `${totalEtfs}개` },
           { label: 'KODEX', value: `${kodexCount}개` },
           { label: 'TIGER', value: `${tigerCount}개` },
+          { label: 'ACE', value: `${aceCount}개` },
           { label: '월배당', value: `${monthlyCount}개` },
         ].map(item => (
           <div key={item.label} className="bg-white rounded-xl border border-[#E2E8F0] p-4 text-center">
@@ -203,7 +212,7 @@ export default function KrEtfPage() {
       {/* 탭 + 정렬 */}
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div className="flex gap-1">
-          {(['전체', 'KODEX', 'TIGER', '절세계좌'] as FilterTab[]).map(t => (
+          {(['전체', 'KODEX', 'TIGER', 'ACE', '절세계좌'] as FilterTab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 tab === t ? 'bg-[#1E293B] text-white' : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:bg-slate-50'
