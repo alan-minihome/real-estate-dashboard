@@ -13,7 +13,7 @@ interface Candidate {
   target_shares: number
   memo: string
   status: string
-  asset_type: string   // 'stock' | 'krx_etf' | 'us_etf'
+  asset_type: string   // 'stock' | 'kr_etf' | 'us_etf' | 'krx_etf'
   price: number | null
   div_yield: number | null
   div_yield_5y: number | null
@@ -25,6 +25,9 @@ interface Candidate {
   overall_pass: number | null
   buy_signal: number | null
   signal_reason: string | null
+  expense_ratio: number | null
+  div_frequency: string | null
+  issuer: string | null
 }
 
 interface IcrResult {
@@ -76,6 +79,7 @@ export default function CandidatesPage() {
   const [earningsTab, setEarningsTab] = useState<'recent' | 'history'>('recent')
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null)
   const [showTiming, setShowTiming] = useState(true)
+  const [activeTab, setActiveTab] = useState<'stock' | 'etf' | 'purchased'>('stock')
 
   async function load() {
     setLoading(true)
@@ -221,9 +225,9 @@ export default function CandidatesPage() {
     )
   }
 
-  const watching  = candidates.filter(c => c.status === 'watching'  && c.asset_type === 'stock')
+  const watching    = candidates.filter(c => c.status === 'watching' && c.asset_type === 'stock')
   const watchingEtf = candidates.filter(c => c.status === 'watching' && c.asset_type !== 'stock')
-  const purchased = candidates.filter(c => c.status === 'purchased')
+  const purchased   = candidates.filter(c => c.status === 'purchased')
 
   const totalAnnualDiv = watching.reduce((sum, c) => {
     if (!c.price || !c.div_yield) return sum
@@ -245,7 +249,7 @@ export default function CandidatesPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          {watching.length > 0 && (
+          {activeTab === 'stock' && watching.length > 0 && (
             <button
               onClick={goSimulation}
               className="px-4 py-2 bg-[#1A56DB] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -253,8 +257,43 @@ export default function CandidatesPage() {
               🧮 시뮬레이션 실행
             </button>
           )}
+          {activeTab === 'etf' && watchingEtf.length > 0 && (
+            <a
+              href="/accumulation"
+              className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors flex items-center gap-2"
+            >
+              📈 적립 시뮬레이션
+            </a>
+          )}
         </div>
       </div>
+
+      {/* 탭 */}
+      <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+        {([
+          { id: 'stock',     label: `💰 배당주`,   count: watching.length },
+          { id: 'etf',       label: `🏦 ETF`,      count: watchingEtf.length },
+          { id: 'purchased', label: `✓ 매수완료`,  count: purchased.length },
+        ] as const).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+              activeTab === t.id ? 'bg-white shadow-sm text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
+          >
+            {t.label}
+            {t.count > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                activeTab === t.id ? 'bg-slate-100 text-[#64748B]' : 'bg-white text-[#64748B]'
+              }`}>{t.count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── 배당주 탭 ── */}
+      {activeTab === 'stock' && (<>
 
       {/* KPI */}
       {watching.length > 0 && (() => {
@@ -860,76 +899,204 @@ export default function CandidatesPage() {
         )
       })()}
 
-      {/* ETF 적립 현황 */}
-      {watchingEtf.length > 0 && (
-        <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#E2E8F0] bg-slate-50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-[#0F172A]">ETF 적립 ({watchingEtf.length})</h2>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">매월 적립</span>
+      </>)}
+
+      {/* ── ETF 탭 ── */}
+      {activeTab === 'etf' && (
+        <>
+          {watchingEtf.length === 0 ? (
+            <div className="bg-white rounded-xl border border-[#E2E8F0] p-16 text-center">
+              <p className="text-4xl mb-4">🏦</p>
+              <p className="text-[#64748B] font-medium">ETF 후보가 없습니다</p>
+              <p className="text-sm text-[#94A3B8] mt-2">ETF 발굴·스크리너에서 종목을 추가하세요</p>
+              <div className="flex gap-3 justify-center mt-4">
+                <button onClick={() => router.push('/etf-discover')}
+                  className="px-4 py-2 text-sm text-violet-600 border border-violet-300 rounded-lg hover:bg-violet-50">
+                  ETF 발굴 →
+                </button>
+                <button onClick={() => router.push('/kr-etf')}
+                  className="px-4 py-2 text-sm text-violet-600 border border-violet-300 rounded-lg hover:bg-violet-50">
+                  국내 ETF →
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-[#64748B]">국내 상장 미국 ETF · 매월 {watchingEtf.reduce((s, c) => s + (c.target_shares || 0), 0)}주 예정</p>
-          </div>
-          <div className="divide-y divide-[#E2E8F0]">
-            {watchingEtf.map(c => {
-              const isKrx = c.asset_type === 'krx_etf'
-              return (
-                <div key={c.id} className="px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-violet-700">{c.ticker}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-200 font-medium">
-                          {isKrx ? 'KRX ETF' : 'US ETF'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#64748B] mt-0.5">{c.name}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-right">
-                    <div>
-                      <p className="text-xs text-[#94A3B8]">월 적립</p>
-                      <p className="text-sm font-semibold text-[#0F172A]">{c.target_shares}주</p>
-                    </div>
-                    {c.memo ? (
-                      <p className="text-xs text-[#64748B] max-w-[160px] text-right">{c.memo}</p>
-                    ) : null}
-                    <button onClick={() => remove(c.id)} className="text-xs text-[#94A3B8] hover:text-red-400">제거</button>
-                  </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#E2E8F0] bg-slate-50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-[#0F172A]">ETF 후보 ({watchingEtf.length})</h2>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">적립 대상</span>
                 </div>
-              )
-            })}
-          </div>
-          <div className="px-4 py-2.5 bg-slate-50/50 border-t border-[#E2E8F0]">
-            <p className="text-[10px] text-[#94A3B8]">
-              💡 ETF 스크리너·발굴 기능은 추후 추가 예정 — 지금은 적립 현황만 기록합니다
-            </p>
-          </div>
-        </div>
+                <p className="text-xs text-[#64748B]">월 목표 {watchingEtf.reduce((s, c) => s + (c.target_shares || 0), 0)}주 적립</p>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#E2E8F0] bg-slate-50/50">
+                    <th className="text-left px-4 py-2.5 font-medium text-[#64748B]">티커</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-[#64748B]">ETF명</th>
+                    <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">구분</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-[#64748B]">현재가</th>
+                    <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">배당률</th>
+                    <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">보수율</th>
+                    <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">분배주기</th>
+                    <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">월 적립</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-[#64748B]">예상 연배당</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-[#64748B]">메모</th>
+                    <th className="text-center px-4 py-2.5 font-medium text-[#64748B]">액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {watchingEtf.map(c => {
+                    const isKr = c.asset_type === 'kr_etf' || c.asset_type === 'krx_etf'
+                    const isEditing = editingId === c.id
+                    const annualDiv = c.price && c.div_yield
+                      ? c.price * c.target_shares * c.div_yield / 100
+                      : null
+                    const freqLabel: Record<string, string> = {
+                      monthly: '월', quarterly: '분기', annual: '연 1회', unknown: '–'
+                    }
+                    return (
+                      <tr key={c.id} className="border-b border-[#E2E8F0] last:border-0 hover:bg-slate-50/40">
+                        <td className="px-4 py-3 font-bold text-violet-700">{c.ticker}</td>
+                        <td className="px-4 py-3 text-[#0F172A] text-xs max-w-[180px]">
+                          <p className="leading-tight">{c.name}</p>
+                          {c.issuer && <p className="text-[10px] text-[#94A3B8] mt-0.5">{c.issuer}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                            isKr
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-violet-50 text-violet-700 border-violet-200'
+                          }`}>
+                            {isKr ? '🇰🇷 KRX' : '🇺🇸 US'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right tabular">
+                          {c.price ? (
+                            <span className="font-medium">
+                              {isKr ? `₩${c.price.toLocaleString()}` : `$${c.price.toFixed(2)}`}
+                            </span>
+                          ) : <span className="text-slate-300">–</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {c.div_yield != null
+                            ? <span className="text-emerald-700 font-medium">{c.div_yield.toFixed(2)}%</span>
+                            : <span className="text-slate-300">–</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {c.expense_ratio != null
+                            ? <span className="text-xs text-[#64748B]">{(c.expense_ratio * 100).toFixed(2)}%</span>
+                            : <span className="text-slate-300">–</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center text-xs text-[#64748B]">
+                          {c.div_frequency ? (freqLabel[c.div_frequency] || c.div_frequency) : '–'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {isEditing ? (
+                            <input
+                              type="number" min={1} value={editShares}
+                              onChange={e => setEditShares(Number(e.target.value))}
+                              className="w-16 text-center border border-violet-400 rounded px-1 py-0.5 text-sm"
+                            />
+                          ) : (
+                            <span className="font-medium">{c.target_shares}주</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular text-sm">
+                          {annualDiv ? (
+                            <span className="font-medium">
+                              {isKr ? `₩${Math.round(annualDiv).toLocaleString()}` : `$${annualDiv.toFixed(0)}`}
+                            </span>
+                          ) : '–'}
+                        </td>
+                        <td className="px-4 py-3">
+                          {isEditing ? (
+                            <input
+                              value={editMemo}
+                              onChange={e => setEditMemo(e.target.value)}
+                              placeholder="메모 입력"
+                              className="w-full border border-[#E2E8F0] rounded px-2 py-0.5 text-sm"
+                            />
+                          ) : (
+                            <span className="text-[#64748B] text-xs">{c.memo || '–'}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 justify-center">
+                            {isEditing ? (
+                              <>
+                                <button onClick={() => saveEdit(c.id)}
+                                  className="text-xs px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-700">저장</button>
+                                <button onClick={() => setEditingId(null)}
+                                  className="text-xs px-2 py-1 border border-[#E2E8F0] rounded hover:bg-slate-50">취소</button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => startEdit(c)}
+                                  className="text-xs px-2 py-1 border border-[#E2E8F0] rounded hover:bg-slate-50 text-[#64748B]">✏️</button>
+                                <button onClick={() => markPurchased(c.id)}
+                                  className="text-xs px-2 py-1 border border-emerald-300 text-emerald-600 rounded hover:bg-emerald-50">✓완료</button>
+                                <button onClick={() => remove(c.id)}
+                                  className="text-xs px-2 py-1 border border-red-200 text-red-400 rounded hover:bg-red-50">✕</button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
-      {/* 매수 완료 종목 */}
-      {purchased.length > 0 && (
-        <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#E2E8F0] bg-slate-50">
-            <h2 className="text-sm font-semibold text-[#64748B]">매수 완료 ({purchased.length})</h2>
-          </div>
-          <div className="divide-y divide-[#E2E8F0]">
-            {purchased.map(c => (
-              <div key={c.id} className="px-4 py-3 flex items-center justify-between text-sm text-[#64748B]">
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-[#0F172A]">{c.ticker}</span>
-                  <span>{c.name}</span>
-                  <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">매수완료</span>
-                </div>
-                <button
-                  onClick={() => remove(c.id)}
-                  className="text-xs text-[#94A3B8] hover:text-red-400"
-                >제거</button>
+      {/* ── 매수완료 탭 ── */}
+      {activeTab === 'purchased' && (
+        <>
+          {purchased.length === 0 ? (
+            <div className="bg-white rounded-xl border border-[#E2E8F0] p-16 text-center">
+              <p className="text-4xl mb-4">✅</p>
+              <p className="text-[#64748B] font-medium">매수 완료 종목이 없습니다</p>
+              <p className="text-sm text-[#94A3B8] mt-2">배당주·ETF 탭에서 매수 완료 처리하면 여기에 기록됩니다</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#E2E8F0] bg-slate-50">
+                <h2 className="text-sm font-semibold text-[#64748B]">매수 완료 ({purchased.length})</h2>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="divide-y divide-[#E2E8F0]">
+                {purchased.map(c => (
+                  <div key={c.id} className="px-4 py-3 flex items-center justify-between text-sm text-[#64748B]">
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-[#0F172A]">{c.ticker}</span>
+                      <span>{c.name}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        c.asset_type !== 'stock'
+                          ? 'bg-violet-100 text-violet-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {c.asset_type !== 'stock' ? 'ETF' : '배당주'} 매수완료
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {c.price && (
+                        <span className="text-xs text-[#94A3B8]">
+                          {c.asset_type === 'kr_etf' || c.asset_type === 'krx_etf'
+                            ? `₩${c.price.toLocaleString()}`
+                            : `$${c.price.toFixed(2)}`}
+                        </span>
+                      )}
+                      <button onClick={() => remove(c.id)}
+                        className="text-xs text-[#94A3B8] hover:text-red-400">제거</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

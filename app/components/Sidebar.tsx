@@ -34,9 +34,10 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { key: 'watch',    label: '감시종목',   sublabel: '배당률·신호 (~3분)',  endpoint: '/api/refresh' },
-  { key: 'fred',     label: 'FRED 지표', sublabel: '거시경제 (~2분)',      endpoint: '/api/refresh/fred' },
-  { key: 'universe', label: 'S&P 500',  sublabel: '전체 스크리닝 (~10분)', endpoint: '/api/refresh/universe' },
+  { key: 'prices',   label: '주가 갱신',  sublabel: '국내·해외 ETF + 감시종목 (~3분)', endpoint: '/api/refresh/prices' },
+  { key: 'watch',    label: '감시종목',   sublabel: '배당률·매수신호 (~3분)',           endpoint: '/api/refresh' },
+  { key: 'fred',     label: 'FRED 지표', sublabel: '거시경제 (~2분)',                  endpoint: '/api/refresh/fred' },
+  { key: 'universe', label: 'S&P 500',  sublabel: '전체 스크리닝 (~10분)',             endpoint: '/api/refresh/universe' },
 ]
 
 function stepIcon(state: StepState, spin: boolean) {
@@ -57,7 +58,7 @@ export default function Sidebar() {
   const pathname = usePathname()
   const [expanded, setExpanded] = useState(false)
   const [states, setStates] = useState<Record<string, StepState>>({
-    watch: 'idle', fred: 'idle', universe: 'idle',
+    prices: 'idle', watch: 'idle', fred: 'idle', universe: 'idle',
   })
   const [running, setRunning] = useState(false)
   const [doneAt, setDoneAt] = useState<string | null>(null)
@@ -67,7 +68,7 @@ export default function Sidebar() {
     if (running) return
     setRunning(true)
     setDoneAt(null)
-    setStates({ watch: 'idle', fred: 'idle', universe: 'idle' })
+    setStates({ prices: 'idle', watch: 'idle', fred: 'idle', universe: 'idle' })
     setExpanded(true)
 
     for (const step of STEPS) {
@@ -96,9 +97,9 @@ export default function Sidebar() {
   const anyError = Object.values(states).some(s => s === 'error')
 
   return (
-    <aside className="w-60 min-h-screen bg-[var(--dd-sidebar)] flex flex-col fixed left-0 top-0 z-10">
-      {/* 로고 */}
-      <div className="px-5 py-5 border-b border-white/10">
+    <aside className="w-60 h-screen bg-[var(--dd-sidebar)] flex flex-col fixed left-0 top-0 z-10">
+      {/* 로고 — 고정 */}
+      <div className="px-5 py-5 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-[var(--dd-blue)] flex items-center justify-center text-white text-sm font-bold">💰</div>
           <div>
@@ -108,31 +109,32 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* 메뉴 */}
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
-        {MENUS.map((item, i) => {
-          if (!item) return <div key={`sep-${i}`} className="my-1 border-t border-white/10" />
-          const { href, label, icon } = item
-          const active = pathname === href
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-[var(--dd-blue)] text-white'
-                  : 'text-slate-400 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              <span>{icon}</span>
-              <span>{label}</span>
-            </Link>
-          )
-        })}
-      </nav>
+      {/* 메뉴 + 전체 갱신 — 통합 스크롤 */}
+      <div className="flex-1 overflow-y-auto">
+        <nav className="px-3 py-4 flex flex-col gap-1">
+          {MENUS.map((item, i) => {
+            if (!item) return <div key={`sep-${i}`} className="my-1 border-t border-white/10" />
+            const { href, label, icon } = item
+            const active = pathname === href
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  active
+                    ? 'bg-[var(--dd-blue)] text-white'
+                    : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <span>{icon}</span>
+                <span>{label}</span>
+              </Link>
+            )
+          })}
+        </nav>
 
-      {/* 전체 갱신 패널 */}
-      <div className="px-3 pb-4 border-t border-white/10 pt-3 space-y-2">
+        {/* 전체 갱신 패널 */}
+        <div className="px-3 pb-6 border-t border-white/10 pt-3 space-y-2">
         {/* 토글 헤더 */}
         <button
           onClick={() => setExpanded(e => !e)}
@@ -199,7 +201,8 @@ export default function Sidebar() {
             {anyError ? '⚠ ' : '✓ '}{doneAt} 갱신
           </p>
         )}
-      </div>
+        </div>{/* 전체 갱신 패널 end */}
+      </div>{/* 통합 스크롤 영역 end */}
     </aside>
   )
 }
