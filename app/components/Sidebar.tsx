@@ -202,6 +202,21 @@ export default function Sidebar() {
           </p>
         )}
         </div>{/* 전체 갱신 패널 end */}
+
+        {/* 로그아웃 */}
+        <div className="px-3 pb-5 pt-2 border-t border-white/10">
+          <button
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' })
+              window.location.href = '/login'
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            <span>🔓</span>
+            <span>로그아웃</span>
+          </button>
+        </div>
+
       </div>{/* 통합 스크롤 영역 end */}
     </aside>
   )
