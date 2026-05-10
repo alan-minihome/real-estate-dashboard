@@ -90,6 +90,7 @@ export default function OtherDividendsPage() {
 
   // 항목 탭 필터 & 정렬
   const [itemFilter, setItemFilter] = useState<'active' | 'ended' | 'all'>('active')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'recurring' | 'short_term'>('all')
   type SortKey = 'name' | 'amount' | 'principal' | 'scheduled_day' | 'total_received' | 'yield'
   const [sortKey,  setSortKey]  = useState<SortKey | null>(null)
   const [sortDesc, setSortDesc] = useState(true)
@@ -325,6 +326,8 @@ export default function OtherDividendsPage() {
     let list = dividends
     if (itemFilter === 'active') list = list.filter(d => d.active)
     if (itemFilter === 'ended')  list = list.filter(d => !d.active)
+    if (typeFilter === 'recurring')  list = list.filter(d => d.type === 'recurring')
+    if (typeFilter === 'short_term') list = list.filter(d => d.type === 'short_term')
 
     if (sortKey) {
       list = [...list].sort((a, b) => {
@@ -344,7 +347,7 @@ export default function OtherDividendsPage() {
       })
     }
     return list
-  }, [dividends, itemFilter, sortKey, sortDesc])
+  }, [dividends, itemFilter, typeFilter, sortKey, sortDesc])
 
   if (loading) return (
     <div className="flex items-center justify-center h-64 text-slate-400">
@@ -354,7 +357,7 @@ export default function OtherDividendsPage() {
 
   // ── 렌더 ────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="max-w-full p-6 space-y-6">
 
       {/* 헤더 */}
       <div className="flex items-center justify-between">
@@ -442,23 +445,42 @@ export default function OtherDividendsPage() {
           ))}
         </div>
 
-        {/* 항목 탭 전용: 활성/종료/전체 필터 */}
+        {/* 항목 탭 전용: 활성/종료/전체 + 장기/단기 필터 */}
         {activeTab === 'items' && (
-          <div className="flex gap-1">
-            {([['active', '✅ 활성'], ['ended', '🔴 종료'], ['all', '전체']] as const).map(([f, label]) => (
-              <button key={f} onClick={() => setItemFilter(f)}
-                className={`px-3 py-1.5 text-xs rounded-lg border font-medium transition-colors ${
-                  itemFilter === f ? 'bg-[#0F172A] text-white border-[#0F172A]' : 'border-[#E2E8F0] text-[#64748B] hover:bg-slate-50'
-                }`}>
-                {label}
-                <span className="ml-1 opacity-60">
-                  {f === 'active' ? dividends.filter(d=>d.active).length :
-                   f === 'ended'  ? dividends.filter(d=>!d.active).length :
-                   dividends.length}
-                </span>
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="flex gap-1">
+              {([['active', '✅ 활성'], ['ended', '🔴 종료'], ['all', '전체']] as const).map(([f, label]) => (
+                <button key={f} onClick={() => setItemFilter(f)}
+                  className={`px-3 py-1.5 text-xs rounded-lg border font-medium transition-colors ${
+                    itemFilter === f ? 'bg-[#0F172A] text-white border-[#0F172A]' : 'border-[#E2E8F0] text-[#64748B] hover:bg-slate-50'
+                  }`}>
+                  {label}
+                  <span className="ml-1 opacity-60">
+                    {f === 'active' ? dividends.filter(d=>d.active).length :
+                     f === 'ended'  ? dividends.filter(d=>!d.active).length :
+                     dividends.length}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {/* 구분선 */}
+            <span className="text-slate-300 text-xs">|</span>
+            <div className="flex gap-1">
+              {([['all', '전체'], ['recurring', '🔵 장기'], ['short_term', '🟡 단기']] as const).map(([f, label]) => (
+                <button key={f} onClick={() => setTypeFilter(f)}
+                  className={`px-3 py-1.5 text-xs rounded-lg border font-medium transition-colors ${
+                    typeFilter === f ? 'bg-[#1A56DB] text-white border-[#1A56DB]' : 'border-[#E2E8F0] text-[#64748B] hover:bg-slate-50'
+                  }`}>
+                  {label}
+                  <span className="ml-1 opacity-60">
+                    {f === 'all'        ? dividends.length :
+                     f === 'recurring'  ? dividends.filter(d=>d.type==='recurring').length :
+                     dividends.filter(d=>d.type==='short_term').length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -470,7 +492,6 @@ export default function OtherDividendsPage() {
             sub="+ 배당 항목 추가 버튼으로 시작하세요" />
         ) : (
           <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
-            <div className="overflow-x-auto">
             <div className="max-h-[560px] overflow-y-auto relative">
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10">
@@ -547,13 +568,17 @@ export default function OtherDividendsPage() {
                             {fmt(d.amount, d.currency)}
                           </td>
                           {/* 예상 배당일 */}
-                          <td className="px-3 py-3 text-center text-xs text-[#64748B]">
+                          <td className="px-2 py-3 text-center text-xs text-[#64748B] whitespace-nowrap">
                             {d.scheduled_day ? `매월 ${d.scheduled_day}일` : '–'}
                           </td>
                           {/* 기간 */}
-                          <td className="px-3 py-3 text-xs text-[#64748B]">
-                            {d.start_date ? d.start_date : '–'}
-                            {d.end_date ? ` ~ ${d.end_date}` : d.type === 'recurring' ? ' ~ 계속' : ''}
+                          <td className="px-2 py-3 text-xs text-[#64748B] whitespace-nowrap">
+                            {d.start_date
+                              ? `'${d.start_date.slice(2,4)}.${d.start_date.slice(5,7)}`
+                              : '–'}
+                            {d.end_date
+                              ? `~'${d.end_date.slice(2,4)}.${d.end_date.slice(5,7)}`
+                              : d.type === 'recurring' ? '~계속' : ''}
                           </td>
                           {/* 원금 */}
                           <td className="px-3 py-3 text-right text-xs tabular text-[#64748B]">
@@ -672,9 +697,49 @@ export default function OtherDividendsPage() {
                   )
                 })}
               </tbody>
+              {/* 합계 행 */}
+              {(() => {
+                const totalPrincipal     = filteredDividends.reduce((s, d) => s + (d.principal ?? 0), 0)
+                const totalAmount        = filteredDividends.reduce((s, d) => s + d.amount, 0)
+                const totalReceived      = filteredDividends.reduce((s, d) => s + (d.total_received ?? 0), 0)
+                const hasPrincipal       = filteredDividends.some(d => d.principal != null && d.principal > 0)
+                // 가중평균 연수익률: 원금이 있는 항목들만
+                const yieldItems         = filteredDividends.filter(d => d.principal != null && d.principal > 0)
+                const weightedYieldSum   = yieldItems.reduce((s, d) => s + (d.amount * 12), 0)
+                const weightedPrincipal  = yieldItems.reduce((s, d) => s + (d.principal ?? 0), 0)
+                const avgYield           = weightedPrincipal > 0 ? (weightedYieldSum / weightedPrincipal) * 100 : null
+                return (
+                  <tfoot>
+                    <tr className="bg-slate-100 border-t-2 border-[#E2E8F0] text-xs font-semibold text-[#0F172A]">
+                      <td className="px-4 py-3 text-[#64748B] font-medium">
+                        합계 <span className="font-normal text-[10px] text-slate-400">({filteredDividends.length}건)</span>
+                      </td>
+                      <td />
+                      <td className="px-3 py-3 text-right tabular">
+                        {fmt(totalAmount, 'KRW')}
+                        <p className="text-[10px] text-[#64748B] font-normal">월 합계</p>
+                      </td>
+                      <td /><td />
+                      <td className="px-3 py-3 text-right tabular">
+                        {hasPrincipal ? fmt(totalPrincipal, 'KRW') : <span className="text-slate-300">–</span>}
+                      </td>
+                      <td className="px-3 py-3 text-right tabular">
+                        {avgYield != null
+                          ? <span className="text-emerald-600">{avgYield.toFixed(2)}%</span>
+                          : <span className="text-slate-300">–</span>}
+                        {avgYield != null && <p className="text-[10px] text-[#64748B] font-normal">가중평균</p>}
+                      </td>
+                      <td />
+                      <td className="px-3 py-3 text-right tabular">
+                        <span className="text-emerald-600">{fmt(totalReceived, 'KRW')}</span>
+                      </td>
+                      <td /><td />
+                    </tr>
+                  </tfoot>
+                )
+              })()}
             </table>
             </div>{/* max-h scroll end */}
-            </div>{/* overflow-x end */}
           </div>
         )
       )}
