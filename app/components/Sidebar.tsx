@@ -6,20 +6,21 @@ import { useState, useCallback } from 'react'
 const MENUS = [
   { href: '/',          label: '홈',           icon: '💰' },
   { href: '/portfolio', label: '포트폴리오',    icon: '📊' },
+  null, // 구분선 — 발굴 & 분석
+  { href: '/discover',      label: '주식 발굴',     icon: '🔭' },
+  { href: '/screener',      label: '주식 스크리너',  icon: '🔍' },
+  { href: '/etf-discover',  label: 'ETF 발굴',      icon: '🏦' },
+  { href: '/etf-screener',  label: 'ETF 스크리너',  icon: '🎯' },
+  { href: '/kr-etf',        label: '국내 ETF',      icon: '🇰🇷' },
+  null, // 구분선 — 의사결정
+  { href: '/candidates',    label: '예비 후보함',   icon: '📋' },
+  { href: '/simulation',    label: '배당 시뮬레이션', icon: '🧮' },
+  null, // 구분선 — 모니터링
+  { href: '/signals',       label: '매수 신호',     icon: '⚡' },
+  { href: '/calendar',      label: '배당 캘린더',   icon: '📅' },
+  { href: '/macro',         label: '거시경제',      icon: '🌍' },
   null, // 구분선
-  { href: '/discover',     label: '신규 발굴',    icon: '🔭' },
-  { href: '/screener',    label: '종목 스크리너', icon: '🔍' },
-  { href: '/candidates',  label: '예비 후보함',  icon: '📋' },
-  null, // 구분선
-  { href: '/etf-discover', label: 'ETF 발굴',    icon: '🏦' },
-  { href: '/etf-screener', label: 'ETF 스크리너', icon: '🎯' },
-  { href: '/simulation', label: '배당 시뮬레이션', icon: '🧮' },
-  null, // 구분선
-  { href: '/signals',   label: '매수 신호',    icon: '⚡' },
-  { href: '/calendar',  label: '배당 캘린더',  icon: '📅' },
-  { href: '/macro',     label: '거시경제',     icon: '🌍' },
-  null, // 구분선
-  { href: '/book',      label: '책 핵심 정리', icon: '📖' },
+  { href: '/book',          label: '책 핵심 정리',  icon: '📖' },
 ]
 
 type StepState = 'idle' | 'running' | 'done' | 'error'

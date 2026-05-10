@@ -175,6 +175,52 @@ const PRESETS: Preset[] = [
   },
 ]
 
+// ── 국내 대응 ETF 매핑 ────────────────────────────────────────────────────
+const KR_ETF_MAP: Record<string, string[]> = {
+  // 배당성장형
+  'SCHD':  ['KODEX 미국배당다우존스', 'TIGER 미국배당다우존스'],
+  'VIG':   ['KODEX 미국배당다우존스'],
+  'DGRO':  ['TIGER 미국배당성장'],
+  'DGRW':  [],
+  'RDVY':  [],
+  // 고배당형
+  'VYM':   ['TIGER 미국고배당'],
+  'HDV':   [],
+  'DVY':   ['KODEX 미국배당다우존스'],
+  'SPYD':  ['TIGER 미국고배당'],
+  'SPHD':  [],
+  'PEY':   [],
+  // 커버드콜
+  'JEPI':  ['KODEX 미국배당프리미엄액티브', 'TIGER 미국배당+7%프리미엄다우존스'],
+  'JEPQ':  ['TIGER 미국나스닥+7%프리미엄'],
+  'QYLD':  ['TIGER 미국나스닥100커버드콜(합성)'],
+  'XYLD':  [],
+  'RYLD':  [],
+  'DIVO':  [],
+  'NUSI':  [],
+  // 배당귀족
+  'NOBL':  ['KODEX 미국S&P500배당귀족', 'TIGER 미국S&P500배당귀족'],
+  'SDY':   ['TIGER 미국S&P500배당귀족'],
+  'KNG':   [],
+  'REGL':  [],
+  'SDOG':  [],
+  // 리츠
+  'VNQ':   ['KODEX 미국리츠'],
+  'SCHH':  ['KODEX 미국리츠'],
+  'PFF':   [],
+  // 글로벌
+  'VYMI':  [],
+  'IDV':   [],
+  'FID':   [],
+  // 시장비교
+  'QQQ':   ['TIGER 미국나스닥100', 'KODEX 미국나스닥100TR'],
+  'QQQM':  ['TIGER 미국나스닥100'],
+  'VOO':   ['TIGER 미국S&P500', 'KODEX 미국S&P500TR'],
+  'SPY':   ['TIGER 미국S&P500'],
+  'IVV':   ['KODEX 미국S&P500'],
+  'VTI':   ['TIGER 미국전체주식시장(합성)'],
+}
+
 // ── 상수 ─────────────────────────────────────────────────────────────────
 const CATEGORY_LABEL: Record<string, string> = {
   dividend_growth: '배당성장',
@@ -661,6 +707,16 @@ export default function EtfScreenerPage() {
                   리츠 ETF(VNQ)는 리츠 100%, 에너지 ETF는 에너지 집중이 당연합니다. 종합 배당 ETF에서 고집중이면 섹터 리스크에 주의하세요.
                 </ColTooltip>
               </th>
+              <th className="text-center px-2 py-3 font-medium text-[#64748B] text-xs whitespace-nowrap">
+                <ColTooltip label="국내 대응">
+                  <strong>국내 상장 대응 ETF</strong><br/>
+                  동일하거나 유사한 기초지수를 추종하는 한국 KRX 상장 ETF입니다.<br/><br/>
+                  • 원화로 직접 매매 가능<br/>
+                  • ISA·연금저축 계좌에서 세제혜택 적용 가능<br/>
+                  • 보수는 미국 원본보다 높은 경우 많음<br/><br/>
+                  <span className="text-yellow-300">자세한 분석은 국내 ETF 메뉴에서 확인하세요</span>
+                </ColTooltip>
+              </th>
               {activeC.map(c => (
                 <th key={c.key} className="text-center px-2 py-3 font-medium text-[#64748B] text-xs min-w-[52px]">{c.label}</th>
               ))}
@@ -741,6 +797,22 @@ export default function EtfScreenerPage() {
                   {/* 섹터 집중도 */}
                   <td className="px-2 py-3 text-center">
                     <ConcentrationBadge sector={etf.top_sector} pct={etf.top_sector_pct} />
+                  </td>
+                  {/* 국내 대응 ETF */}
+                  <td className="px-2 py-3 text-center">
+                    {(() => {
+                      const krList = KR_ETF_MAP[etf.ticker] ?? []
+                      if (krList.length === 0) return <span className="text-slate-300 text-xs">—</span>
+                      return (
+                        <div className="flex flex-col gap-0.5">
+                          {krList.slice(0, 2).map(name => (
+                            <span key={name} className="text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full whitespace-nowrap leading-tight">
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </td>
                   {/* 기준별 pass/fail */}
                   {activeC.map(c => {
