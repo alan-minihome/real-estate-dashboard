@@ -17,6 +17,7 @@ interface EtfRow {
   total_return_5y: number | null
   top_sector: string | null
   top_sector_pct: number | null
+  last_price: number | null
 }
 
 // expense_ratio 정규화: DB에 혼재된 단위 통일 (> 1이면 ÷100)
@@ -53,6 +54,7 @@ export function GET() {
       total_return_5y: e.total_return_5y ?? null,
       top_sector:      e.top_sector ?? null,
       top_sector_pct:  e.top_sector_pct ?? null,
+      last_price:      e.last_price ?? null,
       inWatchlist:     candidateTickers.has(e.ticker),
     }))
 

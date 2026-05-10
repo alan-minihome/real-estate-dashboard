@@ -18,6 +18,7 @@ interface KrEtfRow {
   tracking_diff: number | null
   description: string | null
   screened_at: string | null
+  last_price: number | null
 }
 
 export function GET() {
@@ -49,6 +50,7 @@ export function GET() {
       tracking_diff:    e.tracking_diff ?? null,
       description:      e.description ?? null,
       screened_at:      e.screened_at ?? null,
+      last_price:       e.last_price ?? null,
       inWatchlist:      candidateTickers.has(e.ticker),
     }))
 

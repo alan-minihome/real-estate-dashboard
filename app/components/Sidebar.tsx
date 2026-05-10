@@ -15,6 +15,7 @@ const MENUS = [
   null, // 구분선 — 의사결정
   { href: '/candidates',    label: '예비 후보함',   icon: '📋' },
   { href: '/simulation',    label: '배당 시뮬레이션', icon: '🧮' },
+  { href: '/accumulation',  label: '적립 시뮬레이션', icon: '📈' },
   null, // 구분선 — 모니터링
   { href: '/signals',       label: '매수 신호',     icon: '⚡' },
   { href: '/calendar',      label: '배당 캘린더',   icon: '📅' },
