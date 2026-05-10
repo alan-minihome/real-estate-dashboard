@@ -1042,7 +1042,7 @@ function SimulationContent() {
                   ))}
                   {/* 합계 행 */}
                   <tr className="bg-blue-50/60 border-t-2 border-[#1A56DB] font-semibold text-sm">
-                    <td colSpan={isKr ? 6 : 5} className="px-4 py-3 text-[#0F172A]">
+                    <td colSpan={isKr ? 7 : 6} className="px-4 py-3 text-[#0F172A]">
                       합계
                       <span className="ml-1.5 text-xs font-normal text-[#64748B]">({etfRows.filter(r => r.shares > 0).length}종목)</span>
                     </td>
