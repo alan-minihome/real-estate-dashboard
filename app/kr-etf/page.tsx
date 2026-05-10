@@ -24,6 +24,7 @@ interface KrEtf {
 // ── 보수·배당률 보완 (yfinance KRX 미지원 → 수동 입력) ─────────────────────
 const KR_MANUAL: Record<string, { expense: number; yield_pct?: number; aum_100m?: number }> = {
   '458730': { expense: 0.09,  yield_pct: 3.2,  aum_100m: 18000 }, // KODEX 미국배당다우존스
+  '489250': { expense: 0.09,  yield_pct: 3.2,  aum_100m: 3000  }, // KODEX 미국배당다우존스(월배당)
   '458760': { expense: 0.09,  yield_pct: 3.1,  aum_100m: 9000  }, // TIGER 미국배당다우존스
   '429000': { expense: 0.09,  yield_pct: 1.8,  aum_100m: 3000  }, // KODEX S&P500배당귀족
   '429050': { expense: 0.09,  yield_pct: 1.8,  aum_100m: 1500  }, // TIGER S&P500배당귀족

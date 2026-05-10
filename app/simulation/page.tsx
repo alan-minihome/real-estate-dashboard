@@ -292,6 +292,7 @@ function SummaryCards({ annual, monthly, tax, usdkrw, investment }: {
 // ─── 국내 ETF 수동 수익률 (yfinance KRX 데이터 보완) ─────────────────────────
 const KR_ETF_MANUAL: Record<string, { yield_pct: number }> = {
   '458730': { yield_pct: 3.2 },  // KODEX 미국배당다우존스
+  '489250': { yield_pct: 3.2 },  // KODEX 미국배당다우존스(월배당)
   '458760': { yield_pct: 3.1 },  // TIGER 미국배당다우존스
   '429000': { yield_pct: 2.0 },  // KODEX 미국S&P500배당귀족
   '429050': { yield_pct: 2.1 },  // TIGER 미국S&P500배당귀족

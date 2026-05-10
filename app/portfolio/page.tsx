@@ -340,7 +340,7 @@ export default function PortfolioPage() {
 
             {/* 평균 매수가 */}
             <div>
-              <label className="text-xs text-[#64748B] mb-1 block">평균 매수가 ({addForm.asset_type === 'kr_etf' ? '₩' : '$'}) *</label>
+              <label className="text-xs text-[#64748B] mb-1 block">매입가 · 평균 매수가 ({addForm.asset_type === 'kr_etf' ? '₩' : '$'}) *</label>
               <input
                 type="number" min="0"
                 value={addForm.avg_price}
@@ -484,7 +484,7 @@ export default function PortfolioPage() {
                   <th className="text-center px-3 py-3 font-medium text-[#64748B]">종류</th>
                   <th className="text-center px-3 py-3 font-medium text-[#64748B]">계좌</th>
                   <th className="text-right px-3 py-3 font-medium text-[#64748B]">수량</th>
-                  <th className="text-right px-3 py-3 font-medium text-[#64748B]">평균매수가</th>
+                  <th className="text-right px-3 py-3 font-medium text-[#64748B]">매입가</th>
                   <th className="text-right px-3 py-3 font-medium text-[#64748B]">현재가</th>
                   <th className="text-right px-3 py-3 font-medium text-[#64748B]">평가금액</th>
                   <th className="text-right px-3 py-3 font-medium text-[#64748B]">손익</th>
