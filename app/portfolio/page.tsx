@@ -71,9 +71,44 @@ export default function PortfolioPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [addForm, setAddForm] = useState({
     ticker: '', name: '', asset_type: 'stock', account_type: 'general',
-    shares: '1', avg_price: '', purchased_at: '', memo: '',
+    shares: '', avg_price: '', purchased_at: '', memo: '',
   })
   const [adding, setAdding] = useState(false)
+  const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'notfound'>('idle')
+  const [addErrors, setAddErrors] = useState<Record<string, string>>({})
+
+  // 티커 입력 후 포커스 이탈 시 자동 조회
+  async function lookupTicker(ticker: string) {
+    if (!ticker) return
+    setLookupStatus('loading')
+    try {
+      const res = await fetch(`/api/lookup?ticker=${encodeURIComponent(ticker)}`)
+      const data = await res.json()
+      if (data.found) {
+        setAddForm(f => ({
+          ...f,
+          name:       f.name || data.name || '',
+          asset_type: data.asset_type || f.asset_type,
+        }))
+        setLookupStatus('found')
+      } else {
+        setLookupStatus('notfound')
+      }
+    } catch {
+      setLookupStatus('notfound')
+    }
+  }
+
+  function validateAddForm() {
+    const errs: Record<string, string> = {}
+    if (!addForm.ticker.trim())       errs.ticker       = '티커를 입력하세요'
+    if (!addForm.name.trim())         errs.name         = '종목명을 입력하세요'
+    if (!addForm.shares || Number(addForm.shares) <= 0) errs.shares = '수량을 입력하세요'
+    if (!addForm.avg_price || Number(addForm.avg_price) <= 0) errs.avg_price = '평균 매수가를 입력하세요'
+    if (!addForm.purchased_at)        errs.purchased_at = '매수일을 입력하세요'
+    setAddErrors(errs)
+    return Object.keys(errs).length === 0
+  }
 
   // 필터
   const [filterAccount, setFilterAccount] = useState<string>('all')
@@ -126,7 +161,7 @@ export default function PortfolioPage() {
   }
 
   async function addHolding() {
-    if (!addForm.ticker) return
+    if (!validateAddForm()) return
     setAdding(true)
     await fetch('/api/holdings', {
       method: 'POST',
@@ -136,15 +171,17 @@ export default function PortfolioPage() {
         name:         addForm.name || addForm.ticker.toUpperCase(),
         asset_type:   addForm.asset_type,
         account_type: addForm.account_type,
-        shares:       Number(addForm.shares) || 0,
-        avg_price:    addForm.avg_price ? Number(addForm.avg_price) : null,
-        purchased_at: addForm.purchased_at || null,
+        shares:       Number(addForm.shares),
+        avg_price:    Number(addForm.avg_price),
+        purchased_at: addForm.purchased_at,
         memo:         addForm.memo || null,
       }),
     })
     setAdding(false)
     setShowAdd(false)
-    setAddForm({ ticker: '', name: '', asset_type: 'stock', account_type: 'general', shares: '1', avg_price: '', purchased_at: '', memo: '' })
+    setAddForm({ ticker: '', name: '', asset_type: 'stock', account_type: 'general', shares: '', avg_price: '', purchased_at: '', memo: '' })
+    setAddErrors({})
+    setLookupStatus('idle')
     load()
   }
 
@@ -217,18 +254,53 @@ export default function PortfolioPage() {
         <div className="bg-white rounded-xl border border-[#1A56DB]/30 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-[#0F172A] mb-4">새 종목 추가</h3>
           <div className="grid grid-cols-4 gap-3 mb-3">
+            {/* 티커 */}
             <div>
               <label className="text-xs text-[#64748B] mb-1 block">티커 *</label>
-              <input value={addForm.ticker} onChange={e => setAddForm(f => ({ ...f, ticker: e.target.value.toUpperCase() }))}
-                placeholder="AAPL / 458730"
-                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A56DB]" />
+              <div className="relative">
+                <input
+                  value={addForm.ticker}
+                  onChange={e => {
+                    setAddForm(f => ({ ...f, ticker: e.target.value.toUpperCase() }))
+                    setLookupStatus('idle')
+                    if (addErrors.ticker) setAddErrors(p => ({ ...p, ticker: '' }))
+                  }}
+                  onBlur={e => lookupTicker(e.target.value.trim())}
+                  placeholder="AAPL / 458730"
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none pr-7 ${
+                    addErrors.ticker ? 'border-red-400 bg-red-50' : 'border-[#E2E8F0] focus:border-[#1A56DB]'
+                  }`}
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                  {lookupStatus === 'loading' && <span className="text-slate-400 animate-pulse">…</span>}
+                  {lookupStatus === 'found'   && <span className="text-emerald-500">✓</span>}
+                  {lookupStatus === 'notfound'&& <span className="text-slate-400" title="DB에 없음 — 직접 입력">?</span>}
+                </span>
+              </div>
+              {addErrors.ticker && <p className="text-[10px] text-red-500 mt-0.5">{addErrors.ticker}</p>}
             </div>
+
+            {/* 종목명 */}
             <div>
-              <label className="text-xs text-[#64748B] mb-1 block">종목명</label>
-              <input value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="자동 조회 (선택)"
-                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A56DB]" />
+              <label className="text-xs text-[#64748B] mb-1 block">
+                종목명 *
+                {lookupStatus === 'found' && <span className="ml-1 text-emerald-500 text-[10px]">자동 입력됨</span>}
+              </label>
+              <input
+                value={addForm.name}
+                onChange={e => {
+                  setAddForm(f => ({ ...f, name: e.target.value }))
+                  if (addErrors.name) setAddErrors(p => ({ ...p, name: '' }))
+                }}
+                placeholder="직접 입력"
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${
+                  addErrors.name ? 'border-red-400 bg-red-50' : 'border-[#E2E8F0] focus:border-[#1A56DB]'
+                }`}
+              />
+              {addErrors.name && <p className="text-[10px] text-red-500 mt-0.5">{addErrors.name}</p>}
             </div>
+
+            {/* 종류 */}
             <div>
               <label className="text-xs text-[#64748B] mb-1 block">종류</label>
               <select value={addForm.asset_type} onChange={e => setAddForm(f => ({ ...f, asset_type: e.target.value }))}
@@ -236,6 +308,8 @@ export default function PortfolioPage() {
                 {ASSET_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
+
+            {/* 계좌 */}
             <div>
               <label className="text-xs text-[#64748B] mb-1 block">계좌</label>
               <select value={addForm.account_type} onChange={e => setAddForm(f => ({ ...f, account_type: e.target.value }))}
@@ -244,34 +318,79 @@ export default function PortfolioPage() {
               </select>
             </div>
           </div>
+
           <div className="grid grid-cols-4 gap-3 mb-4">
+            {/* 보유 수량 */}
             <div>
               <label className="text-xs text-[#64748B] mb-1 block">보유 수량 *</label>
-              <input type="number" min="0" value={addForm.shares} onChange={e => setAddForm(f => ({ ...f, shares: e.target.value }))}
-                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A56DB]" />
+              <input
+                type="number" min="0"
+                value={addForm.shares}
+                onChange={e => {
+                  setAddForm(f => ({ ...f, shares: e.target.value }))
+                  if (addErrors.shares) setAddErrors(p => ({ ...p, shares: '' }))
+                }}
+                placeholder="0"
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${
+                  addErrors.shares ? 'border-red-400 bg-red-50' : 'border-[#E2E8F0] focus:border-[#1A56DB]'
+                }`}
+              />
+              {addErrors.shares && <p className="text-[10px] text-red-500 mt-0.5">{addErrors.shares}</p>}
             </div>
+
+            {/* 평균 매수가 */}
             <div>
-              <label className="text-xs text-[#64748B] mb-1 block">평균 매수가 ({addForm.asset_type === 'kr_etf' ? '₩' : '$'})</label>
-              <input type="number" min="0" value={addForm.avg_price} onChange={e => setAddForm(f => ({ ...f, avg_price: e.target.value }))}
-                placeholder="선택 입력"
-                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A56DB]" />
+              <label className="text-xs text-[#64748B] mb-1 block">평균 매수가 ({addForm.asset_type === 'kr_etf' ? '₩' : '$'}) *</label>
+              <input
+                type="number" min="0"
+                value={addForm.avg_price}
+                onChange={e => {
+                  setAddForm(f => ({ ...f, avg_price: e.target.value }))
+                  if (addErrors.avg_price) setAddErrors(p => ({ ...p, avg_price: '' }))
+                }}
+                placeholder="0"
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${
+                  addErrors.avg_price ? 'border-red-400 bg-red-50' : 'border-[#E2E8F0] focus:border-[#1A56DB]'
+                }`}
+              />
+              {addErrors.avg_price && <p className="text-[10px] text-red-500 mt-0.5">{addErrors.avg_price}</p>}
             </div>
+
+            {/* 최초 매수일 */}
             <div>
-              <label className="text-xs text-[#64748B] mb-1 block">최초 매수일</label>
-              <input type="date" value={addForm.purchased_at} onChange={e => setAddForm(f => ({ ...f, purchased_at: e.target.value }))}
-                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A56DB]" />
+              <label className="text-xs text-[#64748B] mb-1 block">최초 매수일 *</label>
+              <input
+                type="date"
+                value={addForm.purchased_at}
+                onChange={e => {
+                  setAddForm(f => ({ ...f, purchased_at: e.target.value }))
+                  if (addErrors.purchased_at) setAddErrors(p => ({ ...p, purchased_at: '' }))
+                }}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none ${
+                  addErrors.purchased_at ? 'border-red-400 bg-red-50' : 'border-[#E2E8F0] focus:border-[#1A56DB]'
+                }`}
+              />
+              {addErrors.purchased_at && <p className="text-[10px] text-red-500 mt-0.5">{addErrors.purchased_at}</p>}
             </div>
+
+            {/* 메모 (선택) */}
             <div>
-              <label className="text-xs text-[#64748B] mb-1 block">메모</label>
+              <label className="text-xs text-[#64748B] mb-1 block">메모 <span className="text-slate-400">(선택)</span></label>
               <input value={addForm.memo} onChange={e => setAddForm(f => ({ ...f, memo: e.target.value }))}
-                placeholder="선택 입력"
+                placeholder="계좌번호, 메모 등"
                 className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A56DB]" />
             </div>
           </div>
+
+          {/* 필수 항목 안내 */}
+          {Object.keys(addErrors).length > 0 && (
+            <p className="text-xs text-red-500 mb-3">* 표시 항목을 모두 입력해주세요</p>
+          )}
+
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowAdd(false)}
+            <button onClick={() => { setShowAdd(false); setAddErrors({}); setLookupStatus('idle') }}
               className="px-4 py-2 text-sm border border-[#E2E8F0] rounded-lg hover:bg-slate-50">취소</button>
-            <button onClick={addHolding} disabled={adding || !addForm.ticker}
+            <button onClick={addHolding} disabled={adding}
               className="px-4 py-2 text-sm bg-[#1A56DB] text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
               {adding ? '추가 중…' : '추가'}
             </button>
