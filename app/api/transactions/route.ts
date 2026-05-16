@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cacheGet, cacheSet, saveHistory } from '@/lib/db'
+import { lookupEmd } from '@/lib/emd-lookup'
 
 const PROXY = 'https://k-skill-proxy.nomadamas.org'
 
@@ -20,6 +21,15 @@ export async function GET(req: NextRequest) {
     const res = await fetch(`${PROXY}/v1/real-estate/region-code?q=${encodeURIComponent(q)}`)
     if (!res.ok) return NextResponse.json({ error: '지역코드 조회 실패' }, { status: 502 })
     const data = await res.json()
+    // 결과 없을 때 읍면동 → 시군구 정적 룩업으로 폴백
+    if ((data.results ?? []).length === 0) {
+      const emd = lookupEmd(q)
+      if (emd) {
+        const fallback = { results: [emd], query: q, fallback: true }
+        cacheSet(cacheKey, fallback, 24 * 60 * 60 * 1000)
+        return NextResponse.json(fallback)
+      }
+    }
     cacheSet(cacheKey, data, 24 * 60 * 60 * 1000) // 24h
     return NextResponse.json(data)
   }
