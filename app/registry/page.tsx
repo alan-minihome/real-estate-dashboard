@@ -32,13 +32,12 @@ export default function RegistryPage() {
             </ol>
           </div>
 
-          <div className="bg-orange-50 rounded-xl border border-orange-200 p-4">
-            <h3 className="font-semibold text-orange-800 mb-2 text-sm">Hard Limits</h3>
-            <ul className="text-xs text-orange-700 space-y-1">
-              <li>• 에이전트가 ID/PW, 인증서 비밀번호, 카드번호를 입력·저장하지 않습니다</li>
-              <li>• 결제는 반드시 사용자가 직접 수행합니다</li>
-              <li>• 법적 권리관계 해석·자문을 제공하지 않습니다</li>
-              <li>• 법인 결제는 10건 단위 제약이 있습니다</li>
+          <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
+            <h3 className="font-semibold text-blue-800 mb-2 text-sm">🔒 개인정보 보호 원칙</h3>
+            <ul className="text-xs text-blue-700 space-y-1.5">
+              <li>• 비밀번호·인증서·카드번호는 에이전트가 일체 접근하지 않습니다</li>
+              <li>• 결제는 사용자가 직접 확인 후 진행합니다</li>
+              <li>• 법적 권리 해석은 전문가에게 문의하세요</li>
             </ul>
           </div>
         </div>

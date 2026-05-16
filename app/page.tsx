@@ -20,7 +20,7 @@ const FEATURES = [
     icon: '⚖️',
     title: '법원 경매',
     desc: '법원 경매 공고를 매각기일·법원·지역·가격대로 검색. 사건번호 직접 조회 지원.',
-    badge: '세션당 10회 제한',
+    badge: '직접 조회 유도',
     badgeColor: 'bg-orange-100 text-orange-700',
   },
   {

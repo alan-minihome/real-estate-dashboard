@@ -28,8 +28,13 @@
 body {
   background: var(--dd-bg);
   color: var(--dd-text);
-  font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.emoji {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-style: normal;
 }
 
 h1, h2, h3 { text-wrap: balance; }

@@ -88,8 +88,8 @@ export default function Sidebar() {
 
       {/* 하단 */}
       <div className="px-4 py-4 shrink-0 text-[10px]" style={{ color: 'rgba(168,196,224,0.35)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <p>k-skill 기반 · 무료 API</p>
-        <p className="mt-0.5">포트 3002 · PM2 운영</p>
+        <p>무료 공공 API 기반</p>
+        <p className="mt-0.5">실시간 데이터 · 캐시 적용</p>
       </div>
     </aside>
   )

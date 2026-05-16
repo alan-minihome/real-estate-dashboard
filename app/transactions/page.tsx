@@ -48,6 +48,13 @@ export default function TransactionsPage() {
     return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`
   }
 
+  const currentYmInput = () => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  const ymToDisplay = (ym: string) => `${ym.slice(0, 4)}년 ${ym.slice(4)}월`
+
   const searchRegion = async () => {
     if (!regionQ.trim()) return
     const res = await fetch(`/api/transactions?q=${encodeURIComponent(regionQ)}`)
@@ -127,34 +134,35 @@ export default function TransactionsPage() {
             <div className="flex gap-2">
               <input
                 id="month-input"
-                className="border rounded-lg px-3 py-2 text-sm w-32"
-                placeholder={currentYm()}
-                maxLength={6}
+                type="month"
+                className="border rounded-lg px-3 py-2 text-sm"
+                defaultValue={currentYmInput()}
+                max={currentYmInput()}
               />
               <button
                 onClick={() => {
                   const el = document.getElementById('month-input') as HTMLInputElement
-                  const v = el.value.trim()
-                  if (v && /^\d{6}$/.test(v) && !months.includes(v)) {
-                    setMonths([...months, v]); el.value = ''
+                  const v = el.value // YYYY-MM format
+                  if (v) {
+                    const ym = v.replace('-', '')
+                    if (!months.includes(ym)) setMonths([...months, ym])
                   }
                 }}
-                className="px-3 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700"
+                className="px-3 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700 whitespace-nowrap"
               >
                 추가
               </button>
               <button onClick={addMonth} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50 whitespace-nowrap">이번 달</button>
             </div>
-            <p className="text-xs text-gray-400 mt-1">6자리 입력 후 추가 버튼 (예: {currentYm()})</p>
           </div>
         </div>
 
         {months.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {months.map(m => (
-              <div key={m} className="flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1 text-sm">
-                <span>{m}</span>
-                <button onClick={() => setMonths(months.filter(x => x !== m))} className="text-gray-400 hover:text-red-500">×</button>
+              <div key={m} className="flex items-center gap-1 bg-blue-50 border border-blue-100 rounded-full px-3 py-1 text-sm text-blue-700">
+                <span>{ymToDisplay(m)}</span>
+                <button onClick={() => setMonths(months.filter(x => x !== m))} className="text-blue-300 hover:text-red-500 ml-1">×</button>
               </div>
             ))}
           </div>

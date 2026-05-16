@@ -73,7 +73,21 @@ export default function NewsPage() {
         </div>
       </div>
 
-      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-4 flex items-start gap-4">
+          <div className="text-2xl">📡</div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-700 mb-1">뉴스를 불러오지 못했습니다</p>
+            <p className="text-xs text-red-500 mb-3">네이버 뉴스 API에 일시적인 문제가 있을 수 있습니다.</p>
+            <button
+              onClick={() => search()}
+              className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="flex items-center justify-center py-20 text-gray-400 text-sm gap-2">
