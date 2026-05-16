@@ -123,20 +123,29 @@ export default function TransactionsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">조회 월 (YYYYMM)</label>
+            <label className="text-xs text-gray-500 mb-1 block">조회 월</label>
             <div className="flex gap-2">
               <input
+                id="month-input"
                 className="border rounded-lg px-3 py-2 text-sm w-32"
                 placeholder={currentYm()}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    const v = (e.target as HTMLInputElement).value
-                    if (v && !months.includes(v)) setMonths([...months, v])
+                maxLength={6}
+              />
+              <button
+                onClick={() => {
+                  const el = document.getElementById('month-input') as HTMLInputElement
+                  const v = el.value.trim()
+                  if (v && /^\d{6}$/.test(v) && !months.includes(v)) {
+                    setMonths([...months, v]); el.value = ''
                   }
                 }}
-              />
-              <button onClick={addMonth} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50">이번 달</button>
+                className="px-3 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700"
+              >
+                추가
+              </button>
+              <button onClick={addMonth} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50 whitespace-nowrap">이번 달</button>
             </div>
+            <p className="text-xs text-gray-400 mt-1">6자리 입력 후 추가 버튼 (예: {currentYm()})</p>
           </div>
         </div>
 
@@ -155,16 +164,28 @@ export default function TransactionsPage() {
           <p className="text-xs text-orange-600 mb-3">⚠ 상업업무용 전월세는 지원되지 않습니다.</p>
         )}
 
-        <button
-          disabled={!selectedRegion || months.length === 0 || loading || isCommercialRent}
-          onClick={() => months.forEach(m => fetchTx(m))}
-          className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-40"
-        >
-          {loading ? '조회 중…' : '조회'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            disabled={!selectedRegion || months.length === 0 || loading || isCommercialRent}
+            onClick={() => months.forEach(m => fetchTx(m))}
+            className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-40"
+          >
+            {loading ? '조회 중…' : '조회'}
+          </button>
+          {!selectedRegion && <p className="text-xs text-gray-400">지역을 선택하세요</p>}
+          {selectedRegion && months.length === 0 && <p className="text-xs text-gray-400">조회할 월을 추가하세요</p>}
+        </div>
       </div>
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+      {!result && !loading && !error && (
+        <div className="text-center py-20 text-gray-400">
+          <div className="text-5xl mb-4">🔍</div>
+          <p className="text-sm font-medium">지역과 조회 월을 선택하면</p>
+          <p className="text-xs mt-1">실거래가 데이터를 표와 차트로 보여드립니다.</p>
+        </div>
+      )}
 
       {result && (
         <div className="space-y-6">

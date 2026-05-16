@@ -30,10 +30,14 @@ export default function AuctionPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-2">법원 경매</h1>
-      <p className="text-sm text-orange-600 mb-6">
-        ⚠ courtauction.go.kr는 자동 조회 시 IP 차단 위험이 있습니다. 이 페이지는 검색 URL을 생성해 브라우저에서 직접 확인하도록 안내합니다.
-      </p>
+      <h1 className="text-xl font-bold mb-3">법원 경매</h1>
+      <div className="flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+        <span className="text-orange-500 text-lg shrink-0">⚠</span>
+        <div className="text-sm text-orange-800">
+          <p className="font-semibold mb-0.5">자동 조회 시 IP 차단 위험</p>
+          <p className="text-xs text-orange-700">courtauction.go.kr는 빠른 요청 시 약 1시간 IP 차단됩니다. 이 페이지는 <strong>검색 URL만 생성</strong>하며, 실제 조회는 브라우저에서 직접 수행하세요.</p>
+        </div>
+      </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div className="flex flex-wrap gap-3 mb-4">

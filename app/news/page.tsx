@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const PRESETS = ['부동산', '아파트', '금리', '청약', '재개발', '전세 사기', '공시지가', '토지 거래 허가']
 
@@ -11,8 +11,11 @@ export default function NewsPage() {
   const [query, setQuery] = useState('부동산')
   const [sort, setSort] = useState('date')
   const [news, setNews] = useState<NewsItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [searched, setSearched] = useState(false)
+
+  useEffect(() => { search('부동산') }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const search = async (q?: string) => {
     const qFinal = q ?? query
@@ -22,8 +25,10 @@ export default function NewsPage() {
       const data = await res.json()
       if (data.error) { setError(data.error); return }
       setNews(data.items ?? data.data ?? [])
+      setSearched(true)
     } catch {
       setError('뉴스 조회 실패')
+      setSearched(true)
     } finally {
       setLoading(false)
     }
@@ -70,7 +75,17 @@ export default function NewsPage() {
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-      {news.length > 0 && (
+      {loading && (
+        <div className="flex items-center justify-center py-20 text-gray-400 text-sm gap-2">
+          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+          </svg>
+          뉴스 불러오는 중…
+        </div>
+      )}
+
+      {!loading && news.length > 0 && (
         <div className="space-y-3">
           {news.map((item, i) => (
             <a
@@ -89,6 +104,14 @@ export default function NewsPage() {
               </div>
             </a>
           ))}
+        </div>
+      )}
+
+      {!loading && searched && news.length === 0 && !error && (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-4xl mb-3">📭</div>
+          <p className="text-sm font-medium">검색 결과가 없습니다</p>
+          <p className="text-xs mt-1">다른 키워드로 검색해 보세요.</p>
         </div>
       )}
     </div>
