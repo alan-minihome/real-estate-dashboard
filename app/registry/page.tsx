@@ -4,32 +4,53 @@ import { useState } from 'react'
 export default function RegistryPage() {
   const [addresses, setAddresses] = useState('')
   const [generated, setGenerated] = useState(false)
+  const [prepOpen, setPrepOpen] = useState(false)
 
   const lines = addresses.split('\n').map(l => l.trim()).filter(Boolean)
 
   return (
     <div>
       <h1 className="text-xl font-bold mb-2">등기부등본 자동화</h1>
-      <p className="text-xs text-gray-500 mb-6">인터넷등기소(IROS) 장바구니 자동화 안내 — 로그인·결제는 사용자가 직접 수행</p>
+      <p className="text-xs text-gray-500 mb-4">인터넷등기소(IROS) 장바구니 자동화 안내</p>
+
+      {/* 핵심 안내 — 상단 고정 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex gap-3 items-start">
+        <span className="text-blue-500 text-xl shrink-0">ℹ️</span>
+        <div className="text-sm text-blue-800">
+          <p className="font-semibold mb-1">이 도구는 인터넷등기소 장바구니를 자동으로 채워줍니다</p>
+          <p className="text-xs text-blue-700">등기부등본 열람·결제는 <strong>인터넷등기소(iros.go.kr)에서 직접</strong> 하셔야 합니다. 로그인·비밀번호·카드 정보는 이 도구가 절대 접근하지 않습니다.</p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold mb-3">사전 준비사항</h2>
-            <ol className="space-y-2 text-sm text-gray-700">
-              <li className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">1.</span>
-                <span>TouchEn nxKey 보안 프로그램 설치 (인터넷등기소 접속 전 필수)</span>
-              </li>
-              <li className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">2.</span>
-                <span>인터넷등기소 로그인 (공동인증서 또는 간편인증)</span>
-              </li>
-              <li className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">3.</span>
-                <span>아래에 주소 목록 입력 → 클라우드 에이전트가 장바구니에 자동으로 담아줌</span>
-              </li>
-              <li className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">4.</span>
-                <span>10만원 미만 일괄결제 → 일괄열람·저장은 IROS 웹 UI에서 직접</span>
-              </li>
-            </ol>
+          {/* 사전 준비사항 — accordion */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-5 py-4 text-left"
+              onClick={() => setPrepOpen(o => !o)}
+            >
+              <span className="font-semibold text-sm">사전 준비사항</span>
+              <span className="text-gray-400 text-xs">{prepOpen ? '접기 ▲' : '펼치기 ▼'}</span>
+            </button>
+            {prepOpen && (
+              <div className="px-5 pb-5 border-t border-gray-100">
+                <ol className="space-y-2 text-sm text-gray-700 mt-3">
+                  <li className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">1.</span>
+                    <span>TouchEn nxKey 보안 프로그램 설치 (인터넷등기소 접속 전 필수)</span>
+                  </li>
+                  <li className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">2.</span>
+                    <span>인터넷등기소 로그인 (공동인증서 또는 간편인증)</span>
+                  </li>
+                  <li className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">3.</span>
+                    <span>아래에 주소 목록 입력 → 클라우드 에이전트가 장바구니에 자동으로 담아줌</span>
+                  </li>
+                  <li className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">4.</span>
+                    <span>10만원 미만 일괄결제 → 일괄열람·저장은 IROS 웹 UI에서 직접</span>
+                  </li>
+                </ol>
+              </div>
+            )}
           </div>
 
           <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">

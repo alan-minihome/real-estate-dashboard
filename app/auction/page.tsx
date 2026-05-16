@@ -1,5 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+type HistoryItem = { court: string; date: string; url: string; ts: number }
 
 const COURTS: Record<string, string> = {
   '서울중앙': 'B000210', '서울동부': 'B000220', '서울서부': 'B000230',
@@ -17,6 +19,14 @@ export default function AuctionPage() {
   const [caseNumber, setCaseNumber] = useState('')
   const [result, setResult] = useState<{ search_url: string; notice: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [history, setHistory] = useState<HistoryItem[]>([])
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('auction-history') ?? '[]')
+      setHistory(saved)
+    } catch { /* ignore */ }
+  }, [])
 
   const search = async () => {
     setLoading(true)
@@ -24,7 +34,14 @@ export default function AuctionPage() {
     if (caseNumber) params.set('caseNumber', caseNumber)
     else params.set('date', date)
     const res = await fetch(`/api/auction?${params}`)
-    setResult(await res.json())
+    const data = await res.json()
+    setResult(data)
+    if (data.search_url) {
+      const item: HistoryItem = { court, date, url: data.search_url, ts: Date.now() }
+      const next = [item, ...history].slice(0, 5)
+      setHistory(next)
+      localStorage.setItem('auction-history', JSON.stringify(next))
+    }
     setLoading(false)
   }
 
@@ -70,6 +87,20 @@ export default function AuctionPage() {
           {loading ? '생성 중…' : 'URL 생성'}
         </button>
       </div>
+
+      {history.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+          <h2 className="font-semibold text-sm mb-3 text-gray-700">최근 조회 이력</h2>
+          <div className="space-y-2">
+            {history.map((h, i) => (
+              <div key={i} className="flex items-center justify-between text-xs text-gray-600">
+                <span>{h.court}지방법원 · {h.date}</span>
+                <a href={h.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">열기 ↗</a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {result && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">

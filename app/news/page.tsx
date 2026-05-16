@@ -111,10 +111,14 @@ export default function NewsPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-sm mb-1 line-clamp-2">{item.title}</h3>
-                  <p className="text-xs text-gray-500 line-clamp-2">{item.description}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium text-sm line-clamp-2 flex-1">{item.title}</h3>
+                    <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">{fmtDate(item.pub_date_iso, item.pub_date)}</span>
+                  </div>
+                  {item.description && (
+                    <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed border-l-2 border-gray-100 pl-2">{item.description}</p>
+                  )}
                 </div>
-                <span className="text-xs text-gray-400 shrink-0">{fmtDate(item.pub_date_iso, item.pub_date)}</span>
               </div>
             </a>
           ))}

@@ -84,6 +84,20 @@ export default function TransactionsPage() {
     if (!months.includes(ym)) setMonths([...months, ym])
   }
 
+  const addPreset = (n: number) => {
+    const result: string[] = []
+    const now = new Date()
+    for (let i = 0; i < n; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const ym = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`
+      result.push(ym)
+    }
+    setMonths(prev => {
+      const combined = [...new Set([...prev, ...result])]
+      return combined.sort((a, b) => b.localeCompare(a))
+    })
+  }
+
   const isCommercialRent = assetType === 'commercial' && dealType === 'rent'
 
   return (
@@ -153,6 +167,8 @@ export default function TransactionsPage() {
                 추가
               </button>
               <button onClick={addMonth} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50 whitespace-nowrap">이번 달</button>
+              <button onClick={() => addPreset(3)} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50 whitespace-nowrap">최근 3개월</button>
+              <button onClick={() => addPreset(6)} className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-50 whitespace-nowrap">최근 6개월</button>
             </div>
           </div>
         </div>

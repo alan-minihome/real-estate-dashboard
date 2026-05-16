@@ -62,13 +62,42 @@ const FEATURES = [
   },
 ]
 
+const SCENARIOS = [
+  { label: '전세 계약 앞뒀어요', icon: '🔑', links: [{ href: '/registry', text: '등기부등본 확인' }, { href: '/transactions', text: '시세 파악' }] },
+  { label: '집 살까 고민 중이에요', icon: '🏡', links: [{ href: '/transactions', text: '실거래가 조회' }, { href: '/land-price', text: '공시지가 확인' }, { href: '/news', text: '부동산 뉴스' }] },
+  { label: '경매 투자 준비 중이에요', icon: '⚖️', links: [{ href: '/auction', text: '법원 경매 검색' }, { href: '/transactions', text: '주변 시세 확인' }] },
+  { label: '청약을 넣어보고 싶어요', icon: '🏗️', links: [{ href: '/subscription', text: 'LH 청약 공고' }, { href: '/law', text: '청약 관련 법령' }] },
+]
+
 export default function HomePage() {
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">부동산 대시보드</h1>
         <p className="text-gray-500 text-sm">실거래가·경매·청약·법령·뉴스를 한 곳에서 조회합니다.</p>
       </div>
+
+      {/* 시나리오 진입 경로 */}
+      <div className="mb-8">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">어떤 상황이신가요?</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {SCENARIOS.map(s => (
+            <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-lg mb-2">{s.icon}</p>
+              <p className="text-sm font-semibold mb-2 text-gray-800">{s.label}</p>
+              <div className="flex flex-col gap-1">
+                {s.links.map(l => (
+                  <a key={l.href} href={l.href} className="text-xs text-blue-600 hover:underline">
+                    → {l.text}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">전체 메뉴</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {FEATURES.map(({ href, icon, title, desc, badge, badgeColor }) => (
           <Link
@@ -88,3 +117,4 @@ export default function HomePage() {
     </div>
   )
 }
+
